@@ -25,6 +25,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.use(express.json()); // Habilitar parsing de JSON
 
 // Rate limiting
 const limiter = rateLimit({

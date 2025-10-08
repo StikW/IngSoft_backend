@@ -1,4 +1,4 @@
-const express = require('express');
+/*const express = require('express');
 const router = express.Router();
 const { register, login, verifyToken, getCurrentUser, updateProfile, forgotPassword, resetPassword, logout } = require('../controllers/authController');
 const { validateUserData, validateUserRegistrationData, validateUserProfileData, validateForgotPasswordData, validateResetPasswordData } = require('../middleware/validation');
@@ -36,4 +36,18 @@ router.post('/reset-password', validateResetPasswordData, resetPassword);
 router.post('/logout', authenticateToken, logout);
 
 module.exports = router;
+*/
 
+const express = require("express");
+const router = express.Router();
+const { register } = require("../controllers/authController");
+
+// Temporalmente SIN middlewares de validación
+router.post("/register", register);
+
+module.exports = router;
+
+
+// HU3.2 - Login de usuarios
+// POST /api/auth/login
+router.post('/login', validateUserData, login);

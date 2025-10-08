@@ -1,191 +1,192 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { executeQuery } = require('../db');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { executeQuery } = require("../db");
 
-// HU3.2 - Autenticación de usuarios (login con correo/contraseña)
+// ==================================================
+// 🟢 LOGIN — HU3.2 Autenticación de usuarios
+// ==================================================
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Buscar usuario por email
-    const userQuery = `
-      SELECT id, email, password, nombre, apellido, rol, activo 
-      FROM usuarios 
-      WHERE email = ? AND activo = 1
+    // 1️⃣ Buscar usuario y su contraseña activa
+    const query = `
+      SELECT 
+        u.idUsuario,
+        u.nombre,
+        u.apellidos,
+        u.email,
+        u.telefono,
+        c.clave AS password_hash
+      FROM usuario u
+      INNER JOIN contraseña c ON u.idUsuario = c.idUsuario
+      WHERE u.email = ? AND c.estado = 'activa'
+      LIMIT 1;
     `;
-    
-    const users = await executeQuery(userQuery, [email]);
 
-    if (users.length === 0) {
+    const [user] = await executeQuery(query, [email]);
+
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Credenciales inválidas'
+        message: "Usuario no encontrado o sin contraseña activa",
       });
     }
 
-    const user = users[0];
-
-    // Verificar contraseña
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    
-    if (!isPasswordValid) {
+    // 2️⃣ Verificar contraseña con bcrypt
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
       return res.status(401).json({
         success: false,
-        message: 'Credenciales inválidas'
+        message: "Contraseña incorrecta",
       });
     }
 
-    // Generar token JWT
+    // 3️⃣ Generar token JWT
     const token = jwt.sign(
-      { 
-        userId: user.id,
+      {
+        idUsuario: user.idUsuario,
         email: user.email,
-        rol: user.rol
       },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      process.env.JWT_SECRET || "clave_secreta",
+      { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
     );
 
-    // Respuesta exitosa (sin incluir la contraseña)
+    // 4️⃣ Respuesta exitosa
     res.status(200).json({
       success: true,
-      message: 'Login exitoso',
+      message: "Inicio de sesión exitoso",
       data: {
         token,
         user: {
-          id: user.id,
+          idUsuario: user.idUsuario,
           email: user.email,
           nombre: user.nombre,
-          apellido: user.apellido,
-          rol: user.rol
-        }
-      }
+          apellidos: user.apellidos,
+          telefono: user.telefono,
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Error en login:', error);
+    console.error("Error en login:", error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error interno del servidor",
+      error:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-
-// Función para verificar el token (endpoint de verificación)
-const verifyToken = async (req, res) => {
-  try {
-    // Si llegamos aquí, el middleware de autenticación ya validó el token
-    res.status(200).json({
-      success: true,
-      message: 'Token válido',
-      data: {
-        user: req.user
-      }
-    });
-  } catch (error) {
-    console.error('Error verificando token:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
-  }
-};
-
-// Función para obtener información del usuario actual
 const getCurrentUser = async (req, res) => {
   try {
-    const userQuery = `
-      SELECT id, email, nombre, apellido, rol, telefono, fecha_registro
-      FROM usuarios 
-      WHERE id = ? AND activo = 1
+    const query = `
+      SELECT u.idUsuario, u.nombre, u.apellidos, u.email, u.telefono
+      FROM usuario u
+      WHERE u.idUsuario = ?
     `;
-    
-    const users = await executeQuery(userQuery, [req.user.id]);
+    const [user] = await executeQuery(query, [req.user.userId]);
 
-    if (users.length === 0) {
-      return res.status(404).json({
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+    }
+
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error('Error obteniendo usuario actual:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+};
+
+
+
+// HU3.1 - Registro de usuarios
+
+
+const register = async (req, res) => {
+  console.log("📥 Llegó al controlador /api/auth/register");
+  console.log("🧾 Body recibido:", req.body);
+
+  try {
+    const { nombre, apellidos, email, telefono, password } = req.body;
+
+    // Verifica campos requeridos
+    if (!nombre || !apellidos || !email || !telefono || !password) {
+      console.log("❌ Faltan datos");
+      return res.status(400).json({
         success: false,
-        message: 'Usuario no encontrado'
+        message: "Faltan datos requeridos",
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: {
-        user: users[0]
-      }
-    });
+    // Crear el usuario
+    const insertUser = `
+      INSERT INTO usuario (nombre, apellidos, email, telefono)
+      VALUES (?, ?, ?, ?)
+    `;
+    const userResult = await executeQuery(insertUser, [nombre, apellidos, email, telefono]);
+    const idUsuario = userResult.insertId;
 
+    // Encriptar contraseña y guardarla en tabla contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const insertPass = `
+      INSERT INTO contraseña (idUsuario, fechaCambio, clave, estado)
+      VALUES (?, NOW(), ?, 'activa')
+    `;
+    await executeQuery(insertPass, [idUsuario, hashedPassword]);
+
+    console.log("✅ Usuario registrado correctamente");
+
+    return res.status(201).json({
+      success: true,
+      message: "Usuario registrado exitosamente",
+      data: {
+        idUsuario,
+        nombre,
+        apellidos,
+        email,
+        telefono,
+      },
+    });
   } catch (error) {
-    console.error('Error obteniendo usuario actual:', error);
+    console.error("💥 Error en register:", error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: "Error interno del servidor",
+      error: error.message,
     });
   }
 };
 
-// HU3.1 - Registro de usuarios
-const register = async (req, res) => {
+module.exports = { register };
+
+
+
+
+// ==================================================
+// 🟣 VERIFICAR TOKEN
+// ==================================================
+const verifyToken = async (req, res) => {
   try {
-    const { email, password, nombre, apellido, telefono, rol = 'organizador' } = req.body;
-
-    // Verificar si ya existe un usuario con el mismo email
-    const checkQuery = 'SELECT id FROM usuarios WHERE email = ?';
-    const existing = await executeQuery(checkQuery, [email]);
-
-    if (existing.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: 'Ya existe un usuario con ese email'
-      });
-    }
-
-    // Encriptar contraseña
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Insertar nuevo usuario
-    const insertQuery = `
-      INSERT INTO usuarios 
-      (email, password, nombre, apellido, telefono, rol, activo, fecha_registro)
-      VALUES (?, ?, ?, ?, ?, ?, 1, NOW())
-    `;
-
-    const result = await executeQuery(insertQuery, [
-      email,
-      hashedPassword,
-      nombre,
-      apellido,
-      telefono || null,
-      rol
-    ]);
-
-    // Obtener el usuario creado (sin contraseña)
-    const newUserQuery = `
-      SELECT id, email, nombre, apellido, telefono, rol, fecha_registro
-      FROM usuarios 
-      WHERE id = ?
-    `;
-    const newUser = await executeQuery(newUserQuery, [result.insertId]);
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: 'Usuario registrado exitosamente',
+      message: "Token válido",
       data: {
-        user: newUser[0]
-      }
+        user: req.user,
+      },
     });
-
   } catch (error) {
-    console.error('Error registrando usuario:', error);
+    console.error("Error verificando token:", error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error interno del servidor",
     });
   }
+};
+
+module.exports = {
+  login,
+  register,
+  verifyToken,
 };
 
 // HU3.3 - Edición de perfil de usuario
