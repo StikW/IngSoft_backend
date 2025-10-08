@@ -206,68 +206,46 @@ module.exports = {
 // HU3.3 - Edición de perfil de usuario
 const updateProfile = async (req, res) => {
   try {
-    const { nombre, apellido, telefono, email } = req.body;
+    const { nombre } = req.body;
     const userId = req.user.id;
 
-    // Verificar si el nuevo email ya existe (si se está cambiando)
-    if (email) {
-      const emailCheckQuery = 'SELECT id FROM usuarios WHERE email = ? AND id != ?';
-      const emailExists = await executeQuery(emailCheckQuery, [email, userId]);
-
-      if (emailExists.length > 0) {
-        return res.status(409).json({
-          success: false,
-          message: 'Ya existe un usuario con ese email'
-        });
-      }
-    }
-
-    // Construir query de actualización dinámicamente
-    const updateFields = [];
-    const updateParams = [];
-
-    if (nombre !== undefined) {
-      updateFields.push('nombre = ?');
-      updateParams.push(nombre);
-    }
-    if (apellido !== undefined) {
-      updateFields.push('apellido = ?');
-      updateParams.push(apellido);
-    }
-    if (telefono !== undefined) {
-      updateFields.push('telefono = ?');
-      updateParams.push(telefono);
-    }
-    if (email !== undefined) {
-      updateFields.push('email = ?');
-      updateParams.push(email);
-    }
-
-    if (updateFields.length === 0) {
+    // Validar que se proporcionó al menos el nombre
+    if (!nombre || nombre.trim().length < 2) {
       return res.status(400).json({
         success: false,
-        message: 'No se proporcionaron campos para actualizar'
+        message: 'El nombre es requerido y debe tener al menos 2 caracteres'
       });
     }
 
-    updateFields.push('fecha_actualizacion = NOW()');
-    updateParams.push(userId);
-
+    // Actualizar solo el nombre (correo y rol no se pueden cambiar)
     const updateQuery = `
       UPDATE usuarios 
-      SET ${updateFields.join(', ')} 
+      SET nombre = ?
       WHERE id = ?
     `;
 
-    await executeQuery(updateQuery, updateParams);
+    await executeQuery(updateQuery, [nombre.trim(), userId]);
 
-    // Obtener el usuario actualizado
+    // Obtener el usuario actualizado con su rol
     const updatedUserQuery = `
-      SELECT id, email, nombre, apellido, telefono, rol, fecha_registro, fecha_actualizacion
-      FROM usuarios 
-      WHERE id = ?
+      SELECT 
+        u.id,
+        u.nombre,
+        u.correo,
+        u.rol_id,
+        r.nombre as rol
+      FROM usuarios u
+      INNER JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = ?
     `;
     const updatedUser = await executeQuery(updatedUserQuery, [userId]);
+
+    if (updatedUser.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
 
     res.status(200).json({
       success: true,

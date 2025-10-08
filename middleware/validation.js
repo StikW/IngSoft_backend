@@ -146,23 +146,15 @@ const validateUserRegistrationData = (req, res, next) => {
 
 // Middleware para validar datos de actualización de perfil de usuario
 const validateUserProfileData = (req, res, next) => {
-  const { email, nombre, apellido, telefono } = req.body;
+  const { nombre } = req.body;
   const errors = [];
 
-  if (email && !validateEmail(email)) {
-    errors.push('Email inválido');
+  if (!nombre || nombre.trim().length < 2) {
+    errors.push('El nombre es requerido y debe tener al menos 2 caracteres');
   }
 
-  if (nombre !== undefined && (!nombre || nombre.trim().length < 2)) {
-    errors.push('El nombre debe tener al menos 2 caracteres');
-  }
-
-  if (apellido !== undefined && (!apellido || apellido.trim().length < 2)) {
-    errors.push('El apellido debe tener al menos 2 caracteres');
-  }
-
-  if (telefono && telefono.length < 7) {
-    errors.push('Teléfono inválido');
+  if (nombre && nombre.trim().length > 100) {
+    errors.push('El nombre no puede tener más de 100 caracteres');
   }
 
   if (errors.length > 0) {
