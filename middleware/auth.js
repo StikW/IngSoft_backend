@@ -17,7 +17,17 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Verificar que el usuario aún existe en la base de datos
-    const userQuery = 'SELECT id, email, nombre, rol FROM usuarios WHERE id = ? AND activo = 1';
+    const userQuery = `
+      SELECT 
+        u.id, 
+        u.correo, 
+        u.nombre, 
+        u.rol_id,
+        r.nombre as rol
+      FROM usuarios u
+      INNER JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = ? AND u.activo = 1
+    `;
     const users = await executeQuery(userQuery, [decoded.userId]);
     
     if (users.length === 0) {

@@ -12,7 +12,7 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // HU2.1 - Registro de organización externa
 // POST /api/organizations
-router.post('/', authenticateToken, requireRole(['admin', 'organizador']), validateOrganizationData, createOrganization);
+router.post('/', authenticateToken, requireRole(['administrador', 'secretario']), validateOrganizationData, createOrganization);
 
 // HU2.2 - Búsqueda de organización externa (con filtro por nombre)
 // GET /api/organizations/search
@@ -28,7 +28,7 @@ router.get('/:id', authenticateToken, getOrganizationById);
 
 // HU2.4 - Edición de organización externa
 // PUT /api/organizations/:id
-router.put('/:id', authenticateToken, requireRole(['admin', 'organizador']), validateOrganizationData, updateOrganization);
+router.put('/:id', authenticateToken, requireRole(['administrador', 'secretario']), validateOrganizationData, updateOrganization);
 
 module.exports = router;
 

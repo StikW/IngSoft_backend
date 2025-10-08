@@ -318,26 +318,40 @@ const createEvent = async (req, res) => {
     const { 
       titulo, 
       descripcion, 
+      tipo,
       fecha_inicio, 
       fecha_fin, 
-      ubicacion, 
-      capacidad_maxima,
-      costo_entrada,
-      categoria,
-      organizacion_externa_id
+      lugar,
+      unidad_academica_id,
+      organizacion_externa_id,
+      aval_pdf,
+      acta_comite_pdf
     } = req.body;
 
     const organizador_id = req.user.id;
 
+    // Verificar que la unidad académica existe (si se proporciona)
+    if (unidad_academica_id) {
+      const unitCheckQuery = 'SELECT id FROM unidades_academicas WHERE id = ?';
+      const unitExists = await executeQuery(unitCheckQuery, [unidad_academica_id]);
+
+      if (unitExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Unidad académica no encontrada'
+        });
+      }
+    }
+
     // Verificar que la organización externa existe (si se proporciona)
     if (organizacion_externa_id) {
-      const orgCheckQuery = 'SELECT id FROM organizaciones_externas WHERE id = ? AND activo = 1';
+      const orgCheckQuery = 'SELECT id FROM organizaciones_externas WHERE id = ?';
       const orgExists = await executeQuery(orgCheckQuery, [organizacion_externa_id]);
 
       if (orgExists.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Organización externa no encontrada o inactiva'
+          message: 'Organización externa no encontrada'
         });
       }
     }
@@ -345,33 +359,36 @@ const createEvent = async (req, res) => {
     // Insertar nuevo evento
     const insertQuery = `
       INSERT INTO eventos 
-      (titulo, descripcion, fecha_inicio, fecha_fin, ubicacion, capacidad_maxima, 
-       costo_entrada, categoria, estado, organizador_id, organizacion_externa_id, fecha_creacion)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'borrador', ?, ?, NOW())
+      (titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar, estado, 
+       unidad_academica_id, organizador_id, organizacion_externa_id, 
+       aval_pdf, acta_comite_pdf, fecha_registro)
+      VALUES (?, ?, ?, ?, ?, ?, 'borrador', ?, ?, ?, ?, ?, NOW())
     `;
 
     const result = await executeQuery(insertQuery, [
       titulo,
       descripcion,
+      tipo,
       fecha_inicio,
       fecha_fin,
-      ubicacion,
-      capacidad_maxima || null,
-      costo_entrada || 0,
-      categoria || 'General',
+      lugar,
+      unidad_academica_id || null,
       organizador_id,
-      organizacion_externa_id || null
+      organizacion_externa_id || null,
+      aval_pdf || null,
+      acta_comite_pdf || null
     ]);
 
     // Obtener el evento creado con información del organizador y organización
     const newEventQuery = `
       SELECT e.*, 
-             u.nombre as organizador_nombre, 
-             u.apellido as organizador_apellido,
-             o.nombre as organizacion_nombre
+             u.nombre as organizador_nombre,
+             o.nombre as organizacion_nombre,
+             ua.nombre as unidad_academica_nombre
       FROM eventos e
       LEFT JOIN usuarios u ON e.organizador_id = u.id
       LEFT JOIN organizaciones_externas o ON e.organizacion_externa_id = o.id
+      LEFT JOIN unidades_academicas ua ON e.unidad_academica_id = ua.id
       WHERE e.id = ?
     `;
     const newEvent = await executeQuery(newEventQuery, [result.insertId]);

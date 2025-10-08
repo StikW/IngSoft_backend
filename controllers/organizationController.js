@@ -3,7 +3,15 @@ const { executeQuery } = require('../db');
 // HU2.1 - Registro de organización externa (INSERT)
 const createOrganization = async (req, res) => {
   try {
-    const { nombre, email, telefono, direccion, descripcion, tipo_organizacion } = req.body;
+    const { 
+      nombre, 
+      representante_legal, 
+      telefono, 
+      ubicacion, 
+      sector_economico, 
+      actividad_principal, 
+      certificado_pdf 
+    } = req.body;
 
     // Verificar si ya existe una organización con el mismo nombre
     const checkQuery = 'SELECT id FROM organizaciones_externas WHERE nombre = ?';
@@ -19,17 +27,18 @@ const createOrganization = async (req, res) => {
     // Insertar nueva organización
     const insertQuery = `
       INSERT INTO organizaciones_externas 
-      (nombre, email, telefono, direccion, descripcion, tipo_organizacion, fecha_registro, activo)
-      VALUES (?, ?, ?, ?, ?, ?, NOW(), 1)
+      (nombre, representante_legal, telefono, ubicacion, sector_economico, actividad_principal, certificado_pdf, fecha_registro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
     `;
 
     const result = await executeQuery(insertQuery, [
       nombre,
-      email || null,
+      representante_legal,
       telefono || null,
-      direccion || null,
-      descripcion || null,
-      tipo_organizacion || 'General'
+      ubicacion || null,
+      sector_economico || null,
+      actividad_principal || null,
+      certificado_pdf || null
     ]);
 
     // Obtener la organización creada

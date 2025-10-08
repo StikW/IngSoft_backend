@@ -40,14 +40,20 @@ module.exports = router;
 
 const express = require("express");
 const router = express.Router();
-const { register } = require("../controllers/authController");
+const { register, login, getCurrentUser } = require("../controllers/authController");
+const { validateUserData, validateUserRegistrationData } = require("../middleware/validation");
+const { authenticateToken } = require("../middleware/auth");
 
-// Temporalmente SIN middlewares de validación
-router.post("/register", register);
-
-module.exports = router;
-
+// HU3.1 - Registro de usuarios
+// POST /api/auth/register
+router.post("/register", validateUserRegistrationData, register);
 
 // HU3.2 - Login de usuarios
 // POST /api/auth/login
 router.post('/login', validateUserData, login);
+
+// Obtener información del usuario actual
+// GET /api/auth/me
+router.get('/me', authenticateToken, getCurrentUser);
+
+module.exports = router;

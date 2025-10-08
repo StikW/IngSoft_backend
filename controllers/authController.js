@@ -9,18 +9,19 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1️⃣ Buscar usuario y su contraseña activa
+    // 1️⃣ Buscar usuario con su rol
     const query = `
       SELECT 
-        u.idUsuario,
+        u.id,
         u.nombre,
-        u.apellidos,
-        u.email,
-        u.telefono,
-        c.clave AS password_hash
-      FROM usuario u
-      INNER JOIN contraseña c ON u.idUsuario = c.idUsuario
-      WHERE u.email = ? AND c.estado = 'activa'
+        u.correo,
+        u.contrasena,
+        u.rol_id,
+        r.nombre as rol_nombre,
+        u.activo
+      FROM usuarios u
+      INNER JOIN roles r ON u.rol_id = r.id
+      WHERE u.correo = ? AND u.activo = 1
       LIMIT 1;
     `;
 
@@ -29,12 +30,12 @@ const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Usuario no encontrado o sin contraseña activa",
+        message: "Usuario no encontrado o inactivo",
       });
     }
 
     // 2️⃣ Verificar contraseña con bcrypt
-    const validPassword = await bcrypt.compare(password, user.password_hash);
+    const validPassword = await bcrypt.compare(password, user.contrasena);
     if (!validPassword) {
       return res.status(401).json({
         success: false,
@@ -45,8 +46,9 @@ const login = async (req, res) => {
     // 3️⃣ Generar token JWT
     const token = jwt.sign(
       {
-        idUsuario: user.idUsuario,
-        email: user.email,
+        userId: user.id,
+        email: user.correo,
+        rol: user.rol_nombre,
       },
       process.env.JWT_SECRET || "clave_secreta",
       { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
@@ -59,11 +61,11 @@ const login = async (req, res) => {
       data: {
         token,
         user: {
-          idUsuario: user.idUsuario,
-          email: user.email,
+          id: user.id,
           nombre: user.nombre,
-          apellidos: user.apellidos,
-          telefono: user.telefono,
+          correo: user.correo,
+          rol: user.rol_nombre,
+          rol_id: user.rol_id,
         },
       },
     });
@@ -80,9 +82,16 @@ const login = async (req, res) => {
 const getCurrentUser = async (req, res) => {
   try {
     const query = `
-      SELECT u.idUsuario, u.nombre, u.apellidos, u.email, u.telefono
-      FROM usuario u
-      WHERE u.idUsuario = ?
+      SELECT 
+        u.id,
+        u.nombre,
+        u.correo,
+        u.rol_id,
+        r.nombre as rol_nombre,
+        u.activo
+      FROM usuarios u
+      INNER JOIN roles r ON u.rol_id = r.id
+      WHERE u.id = ?
     `;
     const [user] = await executeQuery(query, [req.user.userId]);
 
@@ -107,10 +116,10 @@ const register = async (req, res) => {
   console.log("🧾 Body recibido:", req.body);
 
   try {
-    const { nombre, apellidos, email, telefono, password } = req.body;
+    const { nombre, correo, password, rol_id } = req.body;
 
     // Verifica campos requeridos
-    if (!nombre || !apellidos || !email || !telefono || !password) {
+    if (!nombre || !correo || !password || !rol_id) {
       console.log("❌ Faltan datos");
       return res.status(400).json({
         success: false,
@@ -118,21 +127,27 @@ const register = async (req, res) => {
       });
     }
 
+    // Verificar si el correo ya existe
+    const checkEmail = `SELECT id FROM usuarios WHERE correo = ?`;
+    const existingUser = await executeQuery(checkEmail, [correo]);
+    
+    if (existingUser.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Ya existe un usuario con ese correo",
+      });
+    }
+
+    // Encriptar contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Crear el usuario
     const insertUser = `
-      INSERT INTO usuario (nombre, apellidos, email, telefono)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO usuarios (nombre, correo, contrasena, rol_id, activo)
+      VALUES (?, ?, ?, ?, 1)
     `;
-    const userResult = await executeQuery(insertUser, [nombre, apellidos, email, telefono]);
-    const idUsuario = userResult.insertId;
-
-    // Encriptar contraseña y guardarla en tabla contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const insertPass = `
-      INSERT INTO contraseña (idUsuario, fechaCambio, clave, estado)
-      VALUES (?, NOW(), ?, 'activa')
-    `;
-    await executeQuery(insertPass, [idUsuario, hashedPassword]);
+    const userResult = await executeQuery(insertUser, [nombre, correo, hashedPassword, rol_id]);
+    const userId = userResult.insertId;
 
     console.log("✅ Usuario registrado correctamente");
 
@@ -140,11 +155,10 @@ const register = async (req, res) => {
       success: true,
       message: "Usuario registrado exitosamente",
       data: {
-        idUsuario,
+        id: userId,
         nombre,
-        apellidos,
-        email,
-        telefono,
+        correo,
+        rol_id,
       },
     });
   } catch (error) {

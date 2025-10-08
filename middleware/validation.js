@@ -16,7 +16,7 @@ const validateRequired = (data, requiredFields) => {
   return missing;
 };
 
-// Middleware para validar datos de usuario
+// Middleware para validar datos de usuario (login)
 const validateUserData = (req, res, next) => {
   const { email, password } = req.body;
   const errors = [];
@@ -25,8 +25,8 @@ const validateUserData = (req, res, next) => {
     errors.push('Email inválido');
   }
 
-  if (!password || password.length < 6) {
-    errors.push('La contraseña debe tener al menos 6 caracteres');
+  if (!password || password.length < 4) {
+    errors.push('La contraseña debe tener al menos 4 caracteres');
   }
 
   if (errors.length > 0) {
@@ -42,15 +42,15 @@ const validateUserData = (req, res, next) => {
 
 // Middleware para validar datos de organización
 const validateOrganizationData = (req, res, next) => {
-  const { nombre, email, telefono, direccion } = req.body;
+  const { nombre, representante_legal, telefono, ubicacion } = req.body;
   const errors = [];
 
   if (!nombre || nombre.trim().length < 2) {
     errors.push('El nombre debe tener al menos 2 caracteres');
   }
 
-  if (email && !validateEmail(email)) {
-    errors.push('Email inválido');
+  if (!representante_legal || representante_legal.trim().length < 2) {
+    errors.push('El representante legal es requerido');
   }
 
   if (telefono && telefono.length < 7) {
@@ -70,7 +70,7 @@ const validateOrganizationData = (req, res, next) => {
 
 // Middleware para validar datos de evento
 const validateEventData = (req, res, next) => {
-  const { titulo, descripcion, fecha_inicio, fecha_fin, ubicacion } = req.body;
+  const { titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar } = req.body;
   const errors = [];
 
   if (!titulo || titulo.trim().length < 3) {
@@ -79,6 +79,10 @@ const validateEventData = (req, res, next) => {
 
   if (!descripcion || descripcion.trim().length < 10) {
     errors.push('La descripción debe tener al menos 10 caracteres');
+  }
+
+  if (!tipo || !['academico', 'ludico'].includes(tipo)) {
+    errors.push('El tipo debe ser "academico" o "ludico"');
   }
 
   if (!fecha_inicio) {
@@ -93,8 +97,8 @@ const validateEventData = (req, res, next) => {
     errors.push('La fecha de inicio debe ser anterior a la fecha de fin');
   }
 
-  if (!ubicacion || ubicacion.trim().length < 3) {
-    errors.push('La ubicación debe tener al menos 3 caracteres');
+  if (!lugar || lugar.trim().length < 3) {
+    errors.push('El lugar debe tener al menos 3 caracteres');
   }
 
   if (errors.length > 0) {
@@ -110,31 +114,23 @@ const validateEventData = (req, res, next) => {
 
 // Middleware para validar datos de registro de usuario
 const validateUserRegistrationData = (req, res, next) => {
-  const { email, password, nombre, apellido, telefono, rol } = req.body;
+  const { correo, password, nombre, rol_id } = req.body;
   const errors = [];
 
-  if (!email || !validateEmail(email)) {
-    errors.push('Email inválido');
+  if (!correo || !validateEmail(correo)) {
+    errors.push('Correo inválido');
   }
 
-  if (!password || password.length < 6) {
-    errors.push('La contraseña debe tener al menos 6 caracteres');
+  if (!password || password.length < 4) {
+    errors.push('La contraseña debe tener al menos 4 caracteres');
   }
 
   if (!nombre || nombre.trim().length < 2) {
     errors.push('El nombre debe tener al menos 2 caracteres');
   }
 
-  if (!apellido || apellido.trim().length < 2) {
-    errors.push('El apellido debe tener al menos 2 caracteres');
-  }
-
-  if (telefono && telefono.length < 7) {
-    errors.push('Teléfono inválido');
-  }
-
-  if (rol && !['admin', 'organizador'].includes(rol)) {
-    errors.push('Rol inválido. Debe ser "admin" o "organizador"');
+  if (!rol_id || ![1, 2, 3, 4].includes(parseInt(rol_id))) {
+    errors.push('Rol inválido. Debe ser 1 (estudiante), 2 (docente), 3 (secretario) o 4 (administrador)');
   }
 
   if (errors.length > 0) {

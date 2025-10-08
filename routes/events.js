@@ -12,7 +12,7 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // HU1.1 - Registro de evento
 // POST /api/events
-router.post('/', authenticateToken, requireRole(['admin', 'organizador']), validateEventCreationData, createEvent);
+router.post('/', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), validateEventData, createEvent);
 
 // Obtener eventos por estado (con paginación)
 // GET /api/events?estado=borrador&page=1&limit=10
@@ -24,11 +24,11 @@ router.get('/:id', authenticateToken, getEventById);
 
 // HU1.2 - Edición de evento antes de validación
 // PUT /api/events/:id
-router.put('/:id', authenticateToken, requireRole(['admin', 'organizador']), validateEventData, updateEvent);
+router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), validateEventData, updateEvent);
 
 // HU1.5 - Envío de evento a validación/aprobación
 // POST /api/events/:id/submit-validation
-router.post('/:id/submit-validation', authenticateToken, requireRole(['admin', 'organizador']), submitEventForValidation);
+router.post('/:id/submit-validation', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), submitEventForValidation);
 
 module.exports = router;
 
