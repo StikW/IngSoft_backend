@@ -244,13 +244,14 @@ const getEventById = async (req, res) => {
 // Función adicional: Obtener eventos por estado
 const getEventsByStatus = async (req, res) => {
   try {
-    const { estado, page = 1, limit = 10 } = req.query;
+    const estado = req.query.estado;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
     let query = `
       SELECT e.*, 
-             u.nombre as organizador_nombre, 
-             u.apellido as organizador_apellido,
+             u.nombre as organizador_nombre,
              o.nombre as organizacion_nombre
       FROM eventos e
       LEFT JOIN usuarios u ON e.organizador_id = u.id
@@ -265,13 +266,13 @@ const getEventsByStatus = async (req, res) => {
     }
 
     // Contar total de registros
-    const countQuery = query.replace('SELECT e.*, u.nombre as organizador_nombre, u.apellido as organizador_apellido, o.nombre as organizacion_nombre', 'SELECT COUNT(*) as total');
+    const countQuery = query.replace('SELECT e.*, u.nombre as organizador_nombre, o.nombre as organizacion_nombre', 'SELECT COUNT(*) as total');
     const countResult = await executeQuery(countQuery, params);
     const total = countResult[0].total;
 
     // Obtener registros paginados
-    query += ' ORDER BY e.fecha_creacion DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    query += ' ORDER BY e.fecha_registro DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
 
     const events = await executeQuery(query, params);
 
@@ -280,8 +281,8 @@ const getEventsByStatus = async (req, res) => {
       data: {
         events,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page,
+          limit,
           total,
           pages: Math.ceil(total / limit)
         }

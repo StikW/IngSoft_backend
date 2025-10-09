@@ -244,12 +244,12 @@ const updateOrganization = async (req, res) => {
 // Función adicional: Obtener todas las organizaciones (para listado completo)
 const getAllOrganizations = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
     let query = 'SELECT * FROM organizaciones_externas WHERE 1=1';
     const params = [];
-
 
     // Contar total de registros
     const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
@@ -258,7 +258,7 @@ const getAllOrganizations = async (req, res) => {
 
     // Obtener registros paginados
     query += ' ORDER BY nombre ASC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    params.push(limit, offset);
 
     const organizations = await executeQuery(query, params);
 
@@ -267,8 +267,8 @@ const getAllOrganizations = async (req, res) => {
       data: {
         organizations,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page,
+          limit,
           total,
           pages: Math.ceil(total / limit)
         }
