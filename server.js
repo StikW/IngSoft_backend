@@ -20,12 +20,15 @@ app.use(helmet());
 
 // Configuración de CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json()); // Habilitar parsing de JSON
+
+// Middleware para parsing de JSON
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -47,10 +50,6 @@ const loginLimiter = rateLimit({
     message: 'Demasiados intentos de login, intenta de nuevo en 10 segundos.'
   }
 });
-
-// Middleware para parsing de JSON
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Middleware de logging
 app.use((req, res, next) => {

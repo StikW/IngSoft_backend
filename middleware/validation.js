@@ -18,14 +18,14 @@ const validateRequired = (data, requiredFields) => {
 
 // Middleware para validar datos de usuario (login)
 const validateUserData = (req, res, next) => {
-  const { email, password } = req.body;
+  const { correo, contrasena } = req.body;
   const errors = [];
 
-  if (!email || !validateEmail(email)) {
-    errors.push('Email inválido');
+  if (!correo || !validateEmail(correo)) {
+    errors.push('Correo inválido');
   }
 
-  if (!password || password.length < 4) {
+  if (!contrasena || contrasena.length < 4) {
     errors.push('La contraseña debe tener al menos 4 caracteres');
   }
 
@@ -114,14 +114,14 @@ const validateEventData = (req, res, next) => {
 
 // Middleware para validar datos de registro de usuario
 const validateUserRegistrationData = (req, res, next) => {
-  const { correo, password, nombre, rol_id } = req.body;
+  const { correo, contrasena, nombre, rol_id } = req.body;
   const errors = [];
 
   if (!correo || !validateEmail(correo)) {
     errors.push('Correo inválido');
   }
 
-  if (!password || password.length < 4) {
+  if (!contrasena || contrasena.length < 4) {
     errors.push('La contraseña debe tener al menos 4 caracteres');
   }
 

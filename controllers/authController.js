@@ -6,8 +6,14 @@ const { executeQuery } = require("../db");
 // 🟢 LOGIN — HU3.2 Autenticación de usuarios
 // ==================================================
 const login = async (req, res) => {
+  console.log("📥 Llegó al controlador /api/auth/login");
+  console.log("🧾 Body recibido:", req.body);
+  console.log("🧾 Headers:", req.headers);
+  console.log("🧾 Content-Type:", req.get('Content-Type'));
+
   try {
-    const { email, password } = req.body;
+    const { correo, contrasena } = req.body;
+    console.log("📋 Datos extraídos:", { correo, contrasena });
 
     // 1️⃣ Buscar usuario con su rol
     const query = `
@@ -25,9 +31,10 @@ const login = async (req, res) => {
       LIMIT 1;
     `;
 
-    const [user] = await executeQuery(query, [email]);
+    const [user] = await executeQuery(query, [correo]);
 
     if (!user) {
+      console.log("❌ Usuario no encontrado:", correo);
       return res.status(401).json({
         success: false,
         message: "Usuario no encontrado o inactivo",
@@ -35,7 +42,7 @@ const login = async (req, res) => {
     }
 
     // 2️⃣ Verificar contraseña con bcrypt
-    const validPassword = await bcrypt.compare(password, user.contrasena);
+    const validPassword = await bcrypt.compare(contrasena, user.contrasena);
     if (!validPassword) {
       return res.status(401).json({
         success: false,
@@ -114,16 +121,20 @@ const getCurrentUser = async (req, res) => {
 const register = async (req, res) => {
   console.log("📥 Llegó al controlador /api/auth/register");
   console.log("🧾 Body recibido:", req.body);
+  console.log("🧾 Headers:", req.headers);
+  console.log("🧾 Content-Type:", req.get('Content-Type'));
 
   try {
-    const { nombre, correo, password, rol_id } = req.body;
+    const { nombre, correo, contrasena, rol_id } = req.body;
+    console.log("📋 Datos extraídos:", { nombre, correo, contrasena, rol_id });
 
     // Verifica campos requeridos
-    if (!nombre || !correo || !password || !rol_id) {
-      console.log("❌ Faltan datos");
+    if (!nombre || !correo || !contrasena || !rol_id) {
+      console.log("❌ Faltan datos:", { nombre: !!nombre, correo: !!correo, contrasena: !!contrasena, rol_id: !!rol_id });
       return res.status(400).json({
         success: false,
         message: "Faltan datos requeridos",
+        received: { nombre, correo, contrasena, rol_id }
       });
     }
 
@@ -139,7 +150,7 @@ const register = async (req, res) => {
     }
 
     // Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(contrasena, 10);
 
     // Crear el usuario
     const insertUser = `
@@ -271,7 +282,7 @@ const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     // Buscar usuario por email
-    const userQuery = 'SELECT id, email, nombre FROM usuarios WHERE email = ? AND activo = 1';
+    const userQuery = 'SELECT id, correo, nombre FROM usuarios WHERE correo = ? AND activo = 1';
     const users = await executeQuery(userQuery, [email]);
 
     if (users.length === 0) {
@@ -288,7 +299,7 @@ const forgotPassword = async (req, res) => {
     const resetToken = jwt.sign(
       { 
         userId: user.id,
-        email: user.email,
+        email: user.correo,
         type: 'password_reset'
       },
       process.env.JWT_SECRET,
@@ -301,7 +312,7 @@ const forgotPassword = async (req, res) => {
     // En un entorno real, aquí enviarías un email con el enlace de recuperación
     // const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
     
-    console.log(`🔗 Enlace de recuperación para ${user.email}: ${resetToken}`);
+    console.log(`🔗 Enlace de recuperación para ${user.correo}: ${resetToken}`);
 
     res.status(200).json({
       success: true,
@@ -359,7 +370,7 @@ const resetPassword = async (req, res) => {
     }
 
     // Verificar que el usuario aún existe
-    const userQuery = 'SELECT id FROM usuarios WHERE id = ? AND email = ? AND activo = 1';
+    const userQuery = 'SELECT id FROM usuarios WHERE id = ? AND correo = ? AND activo = 1';
     const users = await executeQuery(userQuery, [decoded.userId, decoded.email]);
 
     if (users.length === 0) {
@@ -384,7 +395,7 @@ const resetPassword = async (req, res) => {
     // Actualizar contraseña
     const updateQuery = `
       UPDATE usuarios 
-      SET password = ?, fecha_actualizacion = NOW()
+      SET contrasena = ?
       WHERE id = ?
     `;
     await executeQuery(updateQuery, [hashedPassword, decoded.userId]);

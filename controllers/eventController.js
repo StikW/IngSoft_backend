@@ -9,11 +9,8 @@ const updateEvent = async (req, res) => {
       descripcion, 
       fecha_inicio, 
       fecha_fin, 
-      ubicacion, 
-      capacidad_maxima,
-      costo_entrada,
-      categoria,
-      organizador_id,
+      lugar, 
+      unidad_academica_id,
       organizacion_externa_id
     } = req.body;
 
@@ -30,11 +27,11 @@ const updateEvent = async (req, res) => {
 
     const event = existing[0];
 
-    // Solo permitir edición si el evento está en estado 'borrador' o 'pendiente_revision'
-    if (!['borrador', 'pendiente_revision'].includes(event.estado)) {
+    // Solo permitir edición si el evento está en estado 'borrador' o 'enviado'
+    if (!['borrador', 'enviado'].includes(event.estado)) {
       return res.status(400).json({
         success: false,
-        message: 'Solo se pueden editar eventos en estado "borrador" o "pendiente_revision"'
+        message: 'Solo se pueden editar eventos en estado "borrador" o "enviado"'
       });
     }
 
@@ -58,25 +55,13 @@ const updateEvent = async (req, res) => {
       updateFields.push('fecha_fin = ?');
       updateParams.push(fecha_fin);
     }
-    if (ubicacion !== undefined) {
-      updateFields.push('ubicacion = ?');
-      updateParams.push(ubicacion);
+    if (lugar !== undefined) {
+      updateFields.push('lugar = ?');
+      updateParams.push(lugar);
     }
-    if (capacidad_maxima !== undefined) {
-      updateFields.push('capacidad_maxima = ?');
-      updateParams.push(capacidad_maxima);
-    }
-    if (costo_entrada !== undefined) {
-      updateFields.push('costo_entrada = ?');
-      updateParams.push(costo_entrada);
-    }
-    if (categoria !== undefined) {
-      updateFields.push('categoria = ?');
-      updateParams.push(categoria);
-    }
-    if (organizador_id !== undefined) {
-      updateFields.push('organizador_id = ?');
-      updateParams.push(organizador_id);
+    if (unidad_academica_id !== undefined) {
+      updateFields.push('unidad_academica_id = ?');
+      updateParams.push(unidad_academica_id);
     }
     if (organizacion_externa_id !== undefined) {
       updateFields.push('organizacion_externa_id = ?');
@@ -104,12 +89,13 @@ const updateEvent = async (req, res) => {
     // Obtener el evento actualizado
     const updatedEventQuery = `
       SELECT e.*, 
-             u.nombre as organizador_nombre, 
-             u.apellido as organizador_apellido,
-             o.nombre as organizacion_nombre
+             u.nombre as organizador_nombre,
+             o.nombre as organizacion_nombre,
+             ua.nombre as unidad_academica_nombre
       FROM eventos e
       LEFT JOIN usuarios u ON e.organizador_id = u.id
       LEFT JOIN organizaciones_externas o ON e.organizacion_externa_id = o.id
+      LEFT JOIN unidades_academicas ua ON e.unidad_academica_id = ua.id
       WHERE e.id = ?
     `;
     const updatedEvent = await executeQuery(updatedEventQuery, [id]);
@@ -138,7 +124,7 @@ const submitEventForValidation = async (req, res) => {
     const { id } = req.params;
 
     // Verificar que el evento existe
-    const checkQuery = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, ubicacion FROM eventos WHERE id = ?';
+    const checkQuery = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, lugar FROM eventos WHERE id = ?';
     const existing = await executeQuery(checkQuery, [id]);
 
     if (existing.length === 0) {
@@ -159,7 +145,7 @@ const submitEventForValidation = async (req, res) => {
     }
 
     // Validar que el evento tenga todos los campos requeridos
-    const requiredFields = ['titulo', 'descripcion', 'fecha_inicio', 'fecha_fin', 'ubicacion'];
+    const requiredFields = ['titulo', 'descripcion', 'fecha_inicio', 'fecha_fin', 'lugar'];
     const missingFields = requiredFields.filter(field => !event[field] || event[field].trim() === '');
 
     if (missingFields.length > 0) {
@@ -170,11 +156,10 @@ const submitEventForValidation = async (req, res) => {
       });
     }
 
-    // Actualizar estado a 'pendiente_revision'
+    // Actualizar estado a 'enviado'
     const updateQuery = `
       UPDATE eventos 
-      SET estado = 'pendiente_revision', 
-          fecha_envio_validacion = NOW(),
+      SET estado = 'enviado', 
           fecha_actualizacion = NOW()
       WHERE id = ?
     `;
@@ -184,12 +169,13 @@ const submitEventForValidation = async (req, res) => {
     // Obtener el evento actualizado
     const updatedEventQuery = `
       SELECT e.*, 
-             u.nombre as organizador_nombre, 
-             u.apellido as organizador_apellido,
-             o.nombre as organizacion_nombre
+             u.nombre as organizador_nombre,
+             o.nombre as organizacion_nombre,
+             ua.nombre as unidad_academica_nombre
       FROM eventos e
       LEFT JOIN usuarios u ON e.organizador_id = u.id
       LEFT JOIN organizaciones_externas o ON e.organizacion_externa_id = o.id
+      LEFT JOIN unidades_academicas ua ON e.unidad_academica_id = ua.id
       WHERE e.id = ?
     `;
     const updatedEvent = await executeQuery(updatedEventQuery, [id]);

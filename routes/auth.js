@@ -1,20 +1,17 @@
-/*const express = require('express');
+
+const express = require("express");
 const router = express.Router();
-const { register, login, verifyToken, getCurrentUser, updateProfile, forgotPassword, resetPassword, logout } = require('../controllers/authController');
-const { validateUserData, validateUserRegistrationData, validateUserProfileData, validateForgotPasswordData, validateResetPasswordData } = require('../middleware/validation');
-const { authenticateToken } = require('../middleware/auth');
+const { register, login, getCurrentUser, updateProfile, forgotPassword, resetPassword, logout } = require("../controllers/authController");
+const { validateUserData, validateUserRegistrationData, validateUserProfileData, validateForgotPasswordData, validateResetPasswordData } = require("../middleware/validation");
+const { authenticateToken } = require("../middleware/auth");
 
 // HU3.1 - Registro de usuarios
 // POST /api/auth/register
-router.post('/register', validateUserRegistrationData, register);
+router.post("/register", validateUserRegistrationData, register);
 
 // HU3.2 - Login de usuarios
 // POST /api/auth/login
 router.post('/login', validateUserData, login);
-
-// Verificar token válido
-// GET /api/auth/verify
-router.get('/verify', authenticateToken, verifyToken);
 
 // Obtener información del usuario actual
 // GET /api/auth/me
@@ -34,26 +31,5 @@ router.post('/reset-password', validateResetPasswordData, resetPassword);
 // HU3.5 - Cierre de sesión
 // POST /api/auth/logout
 router.post('/logout', authenticateToken, logout);
-
-module.exports = router;
-*/
-
-const express = require("express");
-const router = express.Router();
-const { register, login, getCurrentUser } = require("../controllers/authController");
-const { validateUserData, validateUserRegistrationData } = require("../middleware/validation");
-const { authenticateToken } = require("../middleware/auth");
-
-// HU3.1 - Registro de usuarios
-// POST /api/auth/register
-router.post("/register", validateUserRegistrationData, register);
-
-// HU3.2 - Login de usuarios
-// POST /api/auth/login
-router.post('/login', validateUserData, login);
-
-// Obtener información del usuario actual
-// GET /api/auth/me
-router.get('/me', authenticateToken, getCurrentUser);
 
 module.exports = router;

@@ -66,7 +66,7 @@ const createOrganization = async (req, res) => {
 // HU2.2 - Búsqueda de organización externa (SELECT con filtro por nombre)
 const searchOrganizations = async (req, res) => {
   try {
-    const { nombre, tipo_organizacion, activo = '1' } = req.query;
+    const { nombre } = req.query;
     let query = 'SELECT * FROM organizaciones_externas WHERE 1=1';
     const params = [];
 
@@ -74,18 +74,6 @@ const searchOrganizations = async (req, res) => {
     if (nombre) {
       query += ' AND nombre LIKE ?';
       params.push(`%${nombre}%`);
-    }
-
-    // Filtro por tipo de organización
-    if (tipo_organizacion) {
-      query += ' AND tipo_organizacion = ?';
-      params.push(tipo_organizacion);
-    }
-
-    // Filtro por estado activo
-    if (activo !== undefined) {
-      query += ' AND activo = ?';
-      params.push(activo === '1' ? 1 : 0);
     }
 
     query += ' ORDER BY nombre ASC';
@@ -146,7 +134,15 @@ const getOrganizationById = async (req, res) => {
 const updateOrganization = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, email, telefono, direccion, descripcion, tipo_organizacion, activo } = req.body;
+    const { 
+      nombre, 
+      representante_legal, 
+      telefono, 
+      ubicacion, 
+      sector_economico, 
+      actividad_principal, 
+      certificado_pdf 
+    } = req.body;
 
     // Verificar que la organización existe
     const checkQuery = 'SELECT id FROM organizaciones_externas WHERE id = ?';
@@ -180,29 +176,29 @@ const updateOrganization = async (req, res) => {
       updateFields.push('nombre = ?');
       updateParams.push(nombre);
     }
-    if (email !== undefined) {
-      updateFields.push('email = ?');
-      updateParams.push(email);
+    if (representante_legal !== undefined) {
+      updateFields.push('representante_legal = ?');
+      updateParams.push(representante_legal);
     }
     if (telefono !== undefined) {
       updateFields.push('telefono = ?');
       updateParams.push(telefono);
     }
-    if (direccion !== undefined) {
-      updateFields.push('direccion = ?');
-      updateParams.push(direccion);
+    if (ubicacion !== undefined) {
+      updateFields.push('ubicacion = ?');
+      updateParams.push(ubicacion);
     }
-    if (descripcion !== undefined) {
-      updateFields.push('descripcion = ?');
-      updateParams.push(descripcion);
+    if (sector_economico !== undefined) {
+      updateFields.push('sector_economico = ?');
+      updateParams.push(sector_economico);
     }
-    if (tipo_organizacion !== undefined) {
-      updateFields.push('tipo_organizacion = ?');
-      updateParams.push(tipo_organizacion);
+    if (actividad_principal !== undefined) {
+      updateFields.push('actividad_principal = ?');
+      updateParams.push(actividad_principal);
     }
-    if (activo !== undefined) {
-      updateFields.push('activo = ?');
-      updateParams.push(activo ? 1 : 0);
+    if (certificado_pdf !== undefined) {
+      updateFields.push('certificado_pdf = ?');
+      updateParams.push(certificado_pdf);
     }
 
     if (updateFields.length === 0) {
@@ -248,16 +244,12 @@ const updateOrganization = async (req, res) => {
 // Función adicional: Obtener todas las organizaciones (para listado completo)
 const getAllOrganizations = async (req, res) => {
   try {
-    const { page = 1, limit = 10, activo = '1' } = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = 'SELECT * FROM organizaciones_externas WHERE 1=1';
     const params = [];
 
-    if (activo !== undefined) {
-      query += ' AND activo = ?';
-      params.push(activo === '1' ? 1 : 0);
-    }
 
     // Contar total de registros
     const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
