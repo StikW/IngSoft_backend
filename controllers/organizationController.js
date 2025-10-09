@@ -208,7 +208,6 @@ const updateOrganization = async (req, res) => {
       });
     }
 
-    updateFields.push('fecha_actualizacion = NOW()');
     updateParams.push(id);
 
     const updateQuery = `
