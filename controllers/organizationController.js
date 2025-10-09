@@ -257,7 +257,7 @@ const getAllOrganizations = async (req, res) => {
     const total = countResult[0].total;
 
     // Obtener registros paginados
-    query += ' ORDER BY nombre ASC LIMIT ? OFFSET ?';
+    query += ' ORDER BY nombre ASC';
     params.push(limit, offset);
 
     const organizations = await executeQuery(query, params);

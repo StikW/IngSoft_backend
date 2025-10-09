@@ -245,9 +245,12 @@ const getEventById = async (req, res) => {
 const getEventsByStatus = async (req, res) => {
   try {
     const estado = req.query.estado;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    // Validar y convertir parámetros con más cuidado
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 10));
     const offset = (page - 1) * limit;
+
+    console.log('Parámetros eventos recibidos:', { estado, page, limit, offset });
 
     let query = `
       SELECT e.*, 
@@ -271,8 +274,11 @@ const getEventsByStatus = async (req, res) => {
     const total = countResult[0].total;
 
     // Obtener registros paginados
-    query += ' ORDER BY e.fecha_registro DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    query += ' ORDER BY e.fecha_registro DESC';
+    params.push(Number(limit), Number(offset));
+    
+    console.log('Query eventos final:', query);
+    console.log('Parámetros eventos finales:', params);
 
     const events = await executeQuery(query, params);
 
