@@ -1,6 +1,4 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { executeQuery } = require("../db");
+const authService = require("../services/authService");
 
 // ==================================================
 // 🟢 LOGIN — HU3.2 Autenticación de usuarios
@@ -15,109 +13,40 @@ const login = async (req, res) => {
     const { correo, contrasena } = req.body;
     console.log("📋 Datos extraídos:", { correo, contrasena });
 
-    // 1️⃣ Buscar usuario con su rol
-    const query = `
-      SELECT 
-        u.id,
-        u.nombre,
-        u.correo,
-        u.contrasena,
-        u.rol_id,
-        r.nombre as rol_nombre,
-        u.activo
-      FROM usuarios u
-      INNER JOIN roles r ON u.rol_id = r.id
-      WHERE u.correo = ? AND u.activo = 1
-      LIMIT 1;
-    `;
+    const result = await authService.login(correo, contrasena);
 
-    const [user] = await executeQuery(query, [correo]);
-
-    if (!user) {
-      console.log("❌ Usuario no encontrado:", correo);
-      return res.status(401).json({
-        success: false,
-        message: "Usuario no encontrado o inactivo",
-      });
-    }
-
-    // 2️⃣ Verificar contraseña con bcrypt
-    const validPassword = await bcrypt.compare(contrasena, user.contrasena);
-    if (!validPassword) {
-      return res.status(401).json({
-        success: false,
-        message: "Contraseña incorrecta",
-      });
-    }
-
-    // 3️⃣ Generar token JWT
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.correo,
-        rol: user.rol_nombre,
-      },
-      process.env.JWT_SECRET || "clave_secreta",
-      { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
-    );
-
-    // 4️⃣ Respuesta exitosa
     res.status(200).json({
       success: true,
       message: "Inicio de sesión exitoso",
-      data: {
-        token,
-        user: {
-          id: user.id,
-          nombre: user.nombre,
-          correo: user.correo,
-          rol: user.rol_nombre,
-          rol_id: user.rol_id,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     console.error("Error en login:", error);
-    res.status(500).json({
+    const statusCode = error.message.includes('no encontrado') || error.message.includes('incorrecta') ? 401 : 500;
+    res.status(statusCode).json({
       success: false,
-      message: "Error interno del servidor",
-      error:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
+      message: error.message,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
 const getCurrentUser = async (req, res) => {
   try {
-    const query = `
-      SELECT 
-        u.id,
-        u.nombre,
-        u.correo,
-        u.rol_id,
-        r.nombre as rol_nombre,
-        u.activo
-      FROM usuarios u
-      INNER JOIN roles r ON u.rol_id = r.id
-      WHERE u.id = ?
-    `;
-    const [user] = await executeQuery(query, [req.user.userId]);
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
-    }
-
+    const user = await authService.getCurrentUser(req.user.userId);
     res.status(200).json({ success: true, user });
   } catch (error) {
     console.error('Error obteniendo usuario actual:', error);
-    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    const statusCode = error.message.includes('no encontrado') ? 404 : 500;
+    res.status(statusCode).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 };
 
 
 
 // HU3.1 - Registro de usuarios
-
-
 const register = async (req, res) => {
   console.log("📥 Llegó al controlador /api/auth/register");
   console.log("🧾 Body recibido:", req.body);
@@ -138,51 +67,25 @@ const register = async (req, res) => {
       });
     }
 
-    // Verificar si el correo ya existe
-    const checkEmail = `SELECT id FROM usuarios WHERE correo = ?`;
-    const existingUser = await executeQuery(checkEmail, [correo]);
-    
-    if (existingUser.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: "Ya existe un usuario con ese correo",
-      });
-    }
-
-    // Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(contrasena, 10);
-
-    // Crear el usuario
-    const insertUser = `
-      INSERT INTO usuarios (nombre, correo, contrasena, rol_id, activo)
-      VALUES (?, ?, ?, ?, 1)
-    `;
-    const userResult = await executeQuery(insertUser, [nombre, correo, hashedPassword, rol_id]);
-    const userId = userResult.insertId;
+    const result = await authService.register({ nombre, correo, contrasena, rol_id });
 
     console.log("✅ Usuario registrado correctamente");
 
     return res.status(201).json({
       success: true,
       message: "Usuario registrado exitosamente",
-      data: {
-        id: userId,
-        nombre,
-        correo,
-        rol_id,
-      },
+      data: result,
     });
   } catch (error) {
     console.error("💥 Error en register:", error);
-    res.status(500).json({
+    const statusCode = error.message.includes('Ya existe') ? 409 : 500;
+    res.status(statusCode).json({
       success: false,
-      message: "Error interno del servidor",
-      error: error.message,
+      message: error.message,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-
-module.exports = { register };
 
 
 
@@ -208,69 +111,29 @@ const verifyToken = async (req, res) => {
   }
 };
 
-module.exports = {
-  login,
-  register,
-  verifyToken,
-};
-
 // HU3.3 - Edición de perfil de usuario
 const updateProfile = async (req, res) => {
   try {
     const { nombre } = req.body;
     const userId = req.user.id;
 
-    // Validar que se proporcionó al menos el nombre
-    if (!nombre || nombre.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'El nombre es requerido y debe tener al menos 2 caracteres'
-      });
-    }
-
-    // Actualizar solo el nombre (correo y rol no se pueden cambiar)
-    const updateQuery = `
-      UPDATE usuarios 
-      SET nombre = ?
-      WHERE id = ?
-    `;
-
-    await executeQuery(updateQuery, [nombre.trim(), userId]);
-
-    // Obtener el usuario actualizado con su rol
-    const updatedUserQuery = `
-      SELECT 
-        u.id,
-        u.nombre,
-        u.correo,
-        u.rol_id,
-        r.nombre as rol
-      FROM usuarios u
-      INNER JOIN roles r ON u.rol_id = r.id
-      WHERE u.id = ?
-    `;
-    const updatedUser = await executeQuery(updatedUserQuery, [userId]);
-
-    if (updatedUser.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado'
-      });
-    }
+    const updatedUser = await authService.updateProfile(userId, { nombre });
 
     res.status(200).json({
       success: true,
       message: 'Perfil actualizado exitosamente',
       data: {
-        user: updatedUser[0]
+        user: updatedUser
       }
     });
 
   } catch (error) {
     console.error('Error actualizando perfil:', error);
-    res.status(500).json({
+    const statusCode = error.message.includes('requerido') ? 400 : 
+                      error.message.includes('no encontrado') ? 404 : 500;
+    res.status(statusCode).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: error.message,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -281,47 +144,21 @@ const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Buscar usuario por email
-    const userQuery = 'SELECT id, correo, nombre FROM usuarios WHERE correo = ? AND activo = 1';
-    const users = await executeQuery(userQuery, [email]);
+    const result = await authService.generatePasswordResetToken(email);
 
-    if (users.length === 0) {
-      // Por seguridad, siempre devolver éxito aunque el email no exista
-      return res.status(200).json({
-        success: true,
-        message: 'Si el email existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña'
-      });
+    // Por seguridad, siempre devolver éxito aunque el email no exista
+    const response = {
+      success: true,
+      message: 'Si el email existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña'
+    };
+
+    // En desarrollo, incluir el token para testing
+    if (process.env.NODE_ENV === 'development' && result) {
+      response.resetToken = result.token;
+      console.log(`🔗 Enlace de recuperación para ${result.user.correo}: ${result.token}`);
     }
 
-    const user = users[0];
-
-    // Generar token de recuperación (válido por 1 hora)
-    const resetToken = jwt.sign(
-      { 
-        userId: user.id,
-        email: user.correo,
-        type: 'password_reset'
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
-    // Guardar token en la base de datos (opcional, para invalidar tokens usados)
-    // Por simplicidad, usaremos solo el token JWT
-
-    // En un entorno real, aquí enviarías un email con el enlace de recuperación
-    // const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    
-    console.log(`🔗 Enlace de recuperación para ${user.correo}: ${resetToken}`);
-
-    res.status(200).json({
-      success: true,
-      message: 'Si el email existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña',
-      // En desarrollo, incluir el token para testing
-      ...(process.env.NODE_ENV === 'development' && {
-        resetToken: resetToken
-      })
-    });
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('Error en recuperación de contraseña:', error);
@@ -344,61 +181,7 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Verificar el token
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        return res.status(400).json({
-          success: false,
-          message: 'El token de recuperación ha expirado'
-        });
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'Token de recuperación inválido'
-      });
-    }
-
-    // Verificar que es un token de recuperación
-    if (decoded.type !== 'password_reset') {
-      return res.status(400).json({
-        success: false,
-        message: 'Token inválido'
-      });
-    }
-
-    // Verificar que el usuario aún existe
-    const userQuery = 'SELECT id FROM usuarios WHERE id = ? AND correo = ? AND activo = 1';
-    const users = await executeQuery(userQuery, [decoded.userId, decoded.email]);
-
-    if (users.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Usuario no encontrado o inactivo'
-      });
-    }
-
-    // Validar nueva contraseña
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'La nueva contraseña debe tener al menos 6 caracteres'
-      });
-    }
-
-    // Encriptar nueva contraseña
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    // Actualizar contraseña
-    const updateQuery = `
-      UPDATE usuarios 
-      SET contrasena = ?
-      WHERE id = ?
-    `;
-    await executeQuery(updateQuery, [hashedPassword, decoded.userId]);
+    await authService.resetPassword(token, newPassword);
 
     res.status(200).json({
       success: true,
@@ -407,9 +190,11 @@ const resetPassword = async (req, res) => {
 
   } catch (error) {
     console.error('Error restableciendo contraseña:', error);
-    res.status(500).json({
+    const statusCode = error.message.includes('Token') || error.message.includes('requeridos') || 
+                      error.message.includes('caracteres') || error.message.includes('no encontrado') ? 400 : 500;
+    res.status(statusCode).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: error.message,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

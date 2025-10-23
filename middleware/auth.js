@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { executeQuery } = require('../db');
+const authService = require('../services/authService');
 
 // Middleware para verificar el token JWT
 const authenticateToken = async (req, res, next) => {
@@ -17,27 +17,16 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Verificar que el usuario aún existe en la base de datos
-    const userQuery = `
-      SELECT 
-        u.id, 
-        u.correo, 
-        u.nombre, 
-        u.rol_id,
-        r.nombre as rol
-      FROM usuarios u
-      INNER JOIN roles r ON u.rol_id = r.id
-      WHERE u.id = ? AND u.activo = 1
-    `;
-    const users = await executeQuery(userQuery, [decoded.userId]);
+    const user = await authService.getCurrentUser(decoded.userId);
     
-    if (users.length === 0) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Usuario no encontrado o inactivo'
       });
     }
 
-    req.user = users[0];
+    req.user = user;
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -64,7 +53,7 @@ const requireRole = (roles) => {
       });
     }
 
-    if (!roles.includes(req.user.rol)) {
+    if (!roles.includes(req.user.rol_nombre)) {
       return res.status(403).json({
         success: false,
         message: 'Permisos insuficientes'
