@@ -11,6 +11,7 @@ const { testConnection } = require('./db');
 const authRoutes = require('./routes/auth');
 const organizationRoutes = require('./routes/organizations');
 const eventRoutes = require('./routes/events');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -71,6 +72,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {

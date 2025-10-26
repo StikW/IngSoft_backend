@@ -135,6 +135,36 @@ class OrganizationRepository {
     const result = await executeQuery(query, [id]);
     return result.length > 0;
   }
+
+  // Verificar si la organización está vinculada a eventos
+  async hasLinkedEvents(id) {
+    const query = `
+      SELECT COUNT(*) as count 
+      FROM organizaciones_eventos 
+      WHERE organizacion_externa_id = ?
+    `;
+    const result = await executeQuery(query, [id]);
+    return result[0].count > 0;
+  }
+
+  // Eliminar organización (solo si no está vinculada a eventos)
+  async delete(id) {
+    // Verificar que la organización existe
+    if (!(await this.exists(id))) {
+      throw new Error('Organización no encontrada');
+    }
+
+    // Verificar que no esté vinculada a eventos
+    if (await this.hasLinkedEvents(id)) {
+      throw new Error('No se puede eliminar la organización porque está vinculada a eventos existentes');
+    }
+
+    // Eliminar la organización
+    const query = 'DELETE FROM organizaciones_externas WHERE id = ?';
+    const result = await executeQuery(query, [id]);
+    
+    return result.affectedRows > 0;
+  }
 }
 
 module.exports = new OrganizationRepository();

@@ -160,11 +160,36 @@ const getAllOrganizations = async (req, res) => {
   }
 };
 
+// Eliminar organización
+const deleteOrganization = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Eliminar la organización
+    const result = await organizationService.deleteOrganization(id);
+
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Error al eliminar organización:', error);
+    const statusCode = error.message.includes('no encontrada') ? 404 :
+                      error.message.includes('vinculada a eventos') ? 400 : 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   createOrganization,
   searchOrganizations,
   getOrganizationById,
   updateOrganization,
-  getAllOrganizations
+  getAllOrganizations,
+  deleteOrganization
 };
 

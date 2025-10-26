@@ -9,7 +9,8 @@ const {
   getAllAcademicUnits,
   getMyEvents,
   approveEvent,
-  rejectEvent
+  rejectEvent,
+  deleteEvent
 } = require('../controllers/eventController');
 const { validateEventData, validateEventCreationData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -49,6 +50,10 @@ router.post('/:id/approve', authenticateToken, requireRole(['secretario', 'admin
 // HU4.1 - Rechazar evento
 // POST /api/events/:id/reject
 router.post('/:id/reject', authenticateToken, requireRole(['secretario', 'administrador']), rejectEvent);
+
+// HU1.3 - Eliminar evento
+// DELETE /api/events/:id
+router.delete('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), deleteEvent);
 
 module.exports = router;
 

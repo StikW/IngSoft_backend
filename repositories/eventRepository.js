@@ -111,7 +111,7 @@ class EventRepository {
 
   // Buscar evento por ID con información básica
   async findBasicById(id) {
-    const query = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, lugar FROM eventos WHERE id = ?';
+    const query = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, lugar, organizador_id FROM eventos WHERE id = ?';
     const [event] = await executeQuery(query, [id]);
     return event;
   }
@@ -285,6 +285,25 @@ class EventRepository {
     const query = 'SELECT * FROM unidades_academicas ORDER BY nombre ASC';
     const units = await executeQuery(query);
     return units;
+  }
+
+  // Eliminar evento (solo si está en estado 'borrador')
+  async delete(eventId) {
+    // Verificar que el evento existe y está en estado 'borrador'
+    const event = await this.findBasicById(eventId);
+    if (!event) {
+      throw new Error('Evento no encontrado');
+    }
+    
+    if (event.estado !== 'borrador') {
+      throw new Error('Solo se pueden eliminar eventos en estado "borrador"');
+    }
+
+    // Eliminar el evento (las relaciones se eliminan automáticamente por CASCADE)
+    const query = 'DELETE FROM eventos WHERE id = ?';
+    const result = await executeQuery(query, [eventId]);
+    
+    return result.affectedRows > 0;
   }
 
   // Buscar unidad académica por ID

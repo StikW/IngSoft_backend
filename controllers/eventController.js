@@ -1,4 +1,5 @@
 const eventService = require('../services/eventService');
+const eventRepository = require('../repositories/eventRepository');
 
 // HU1.2 - Edición de evento antes de validación (UPDATE)
 const updateEvent = async (req, res) => {
@@ -304,6 +305,46 @@ const rejectEvent = async (req, res) => {
   }
 };
 
+// Eliminar evento
+const deleteEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verificar que el evento existe y pertenece al usuario
+    const existingEvent = await eventRepository.findBasicById(id);
+    if (!existingEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
+      });
+    }
+
+    // Verificar que el usuario es el organizador del evento
+    if (existingEvent.organizador_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar este evento'
+      });
+    }
+
+    // Eliminar el evento
+    const result = await eventService.deleteEvent(id);
+
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Error al eliminar evento:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   createEvent,
   updateEvent,
@@ -313,5 +354,6 @@ module.exports = {
   getAllAcademicUnits,
   getMyEvents,
   approveEvent,
-  rejectEvent
+  rejectEvent,
+  deleteEvent
 };

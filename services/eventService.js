@@ -1,4 +1,6 @@
 const eventRepository = require('../repositories/eventRepository');
+const userRepository = require('../repositories/userRepository');
+const notificationService = require('./notificationService');
 
 class EventService {
   // Crear nuevo evento
@@ -81,9 +83,9 @@ class EventService {
       throw new Error('Evento no encontrado');
     }
 
-    // Solo permitir edición si el evento está en estado 'borrador' o 'enviado'
-    if (!['borrador', 'enviado'].includes(existingEvent.estado)) {
-      throw new Error('Solo se pueden editar eventos en estado "borrador" o "enviado"');
+    // Solo permitir edición si el evento está en estado 'borrador', 'enviado' o 'rechazado'
+    if (!['borrador', 'enviado', 'rechazado'].includes(existingEvent.estado)) {
+      throw new Error('Solo se pueden editar eventos en estado "borrador", "enviado" o "rechazado"');
     }
 
     // Actualizar el evento
@@ -103,9 +105,9 @@ class EventService {
       throw new Error('Evento no encontrado');
     }
 
-    // Solo permitir envío a validación si el evento está en estado 'borrador'
-    if (existingEvent.estado !== 'borrador') {
-      throw new Error('Solo se pueden enviar a validación eventos en estado "borrador"');
+    // Solo permitir envío a validación si el evento está en estado 'borrador' o 'rechazado'
+    if (!['borrador', 'rechazado'].includes(existingEvent.estado)) {
+      throw new Error('Solo se pueden enviar a validación eventos en estado "borrador" o "rechazado"');
     }
 
     // Validar que el evento tenga todos los campos requeridos
@@ -126,6 +128,34 @@ class EventService {
 
     // Actualizar estado a 'enviado'
     await eventRepository.updateStatus(eventId, 'enviado');
+
+    // Obtener información del organizador para la notificación
+    console.log('🔍 Organizador ID:', existingEvent.organizador_id);
+    
+    if (!existingEvent.organizador_id) {
+      console.error('❌ Error: organizador_id es undefined o null');
+      throw new Error('El evento no tiene un organizador válido');
+    }
+
+    const organizador = await userRepository.findById(existingEvent.organizador_id);
+    console.log('👤 Organizador encontrado:', organizador);
+    
+    if (!organizador) {
+      console.error('❌ Error: No se encontró el organizador con ID:', existingEvent.organizador_id);
+      throw new Error('No se encontró el organizador del evento');
+    }
+    
+    // Crear notificaciones para todos los secretarios
+    try {
+      await notificationService.notifyEventSubmission(
+        eventId,
+        existingEvent.titulo,
+        organizador.nombre
+      );
+    } catch (notificationError) {
+      console.error('Error creando notificaciones:', notificationError);
+      // No fallar el proceso principal si las notificaciones fallan
+    }
 
     // Obtener el evento actualizado
     const updatedEvent = await eventRepository.findById(eventId);
@@ -190,6 +220,14 @@ class EventService {
     // Actualizar estado a 'aprobado'
     await eventRepository.updateStatus(eventId, 'aprobado');
 
+    // Marcar notificaciones relacionadas con este evento como leídas
+    try {
+      await notificationService.markEventNotificationsAsRead(existingEvent.titulo);
+    } catch (notificationError) {
+      console.error('Error marcando notificaciones como leídas:', notificationError);
+      // No fallar el proceso principal si las notificaciones fallan
+    }
+
     // Obtener el evento actualizado
     const updatedEvent = await eventRepository.findById(eventId);
     return updatedEvent;
@@ -217,9 +255,39 @@ class EventService {
     // Actualizar estado a 'rechazado' con justificación
     await eventRepository.updateStatusWithJustification(eventId, 'rechazado', justificacion.trim());
 
+    // Marcar notificaciones relacionadas con este evento como leídas
+    try {
+      await notificationService.markEventNotificationsAsRead(existingEvent.titulo);
+    } catch (notificationError) {
+      console.error('Error marcando notificaciones como leídas:', notificationError);
+      // No fallar el proceso principal si las notificaciones fallan
+    }
+
     // Obtener el evento actualizado
     const updatedEvent = await eventRepository.findById(eventId);
     return updatedEvent;
+  }
+
+  // Eliminar evento (solo eventos en estado 'borrador')
+  async deleteEvent(eventId) {
+    // Verificar que el evento existe
+    const existingEvent = await eventRepository.findBasicById(eventId);
+    if (!existingEvent) {
+      throw new Error('Evento no encontrado');
+    }
+
+    // Solo permitir eliminación si el evento está en estado 'borrador'
+    if (existingEvent.estado !== 'borrador') {
+      throw new Error('Solo se pueden eliminar eventos en estado "borrador"');
+    }
+
+    // Eliminar el evento
+    const deleted = await eventRepository.delete(eventId);
+    if (!deleted) {
+      throw new Error('Error al eliminar el evento');
+    }
+
+    return { success: true, message: 'Evento eliminado exitosamente' };
   }
 }
 

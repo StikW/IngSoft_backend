@@ -5,7 +5,8 @@ const {
   searchOrganizations,
   getOrganizationById,
   updateOrganization,
-  getAllOrganizations
+  getAllOrganizations,
+  deleteOrganization
 } = require('../controllers/organizationController');
 const { validateOrganizationData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -29,6 +30,10 @@ router.get('/:id', authenticateToken, getOrganizationById);
 // HU2.4 - Edición de organización externa
 // PUT /api/organizations/:id
 router.put('/:id', authenticateToken, requireRole(['administrador', 'secretario']), validateOrganizationData, updateOrganization);
+
+// HU2.5 - Eliminación de organización externa
+// DELETE /api/organizations/:id
+router.delete('/:id', authenticateToken, requireRole(['administrador', 'secretario']), deleteOrganization);
 
 module.exports = router;
 

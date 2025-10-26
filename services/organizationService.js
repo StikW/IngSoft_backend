@@ -91,6 +91,23 @@ class OrganizationService {
     const result = await organizationRepository.findAll(validPage, validLimit);
     return result;
   }
+
+  // Eliminar organización (solo secretarios y administradores)
+  async deleteOrganization(organizationId) {
+    // Verificar que la organización existe
+    const existingOrganization = await organizationRepository.findById(organizationId);
+    if (!existingOrganization) {
+      throw new Error('Organización no encontrada');
+    }
+
+    // Eliminar la organización
+    const deleted = await organizationRepository.delete(organizationId);
+    if (!deleted) {
+      throw new Error('Error al eliminar la organización');
+    }
+
+    return { success: true, message: 'Organización eliminada exitosamente' };
+  }
 }
 
 module.exports = new OrganizationService();
