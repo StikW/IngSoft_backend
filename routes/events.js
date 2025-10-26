@@ -5,7 +5,9 @@ const {
   updateEvent,
   submitEventForValidation,
   getEventById,
-  getEventsByStatus
+  getEventsByStatus,
+  getAllAcademicUnits,
+  getMyEvents
 } = require('../controllers/eventController');
 const { validateEventData, validateEventCreationData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -17,6 +19,14 @@ router.post('/', authenticateToken, requireRole(['estudiante', 'docente', 'secre
 // Obtener eventos por estado (con paginación)
 // GET /api/events?estado=borrador&page=1&limit=10
 router.get('/', authenticateToken, getEventsByStatus);
+
+// Obtener todas las unidades académicas
+// GET /api/events/academic-units
+router.get('/academic-units', authenticateToken, getAllAcademicUnits);
+
+// HU1.4 - Obtener eventos del organizador (Mis eventos)
+// GET /api/events/my-events?estado=borrador&titulo=evento&page=1&limit=10
+router.get('/my-events', authenticateToken, getMyEvents);
 
 // Obtener evento por ID
 // GET /api/events/:id

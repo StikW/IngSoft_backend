@@ -10,8 +10,7 @@ const updateEvent = async (req, res) => {
       fecha_inicio, 
       fecha_fin, 
       lugar, 
-      unidad_academica_id,
-      organizacion_externa_id
+      unidad_academica_id
     } = req.body;
 
     const updateData = {};
@@ -21,7 +20,6 @@ const updateEvent = async (req, res) => {
     if (fecha_fin !== undefined) updateData.fecha_fin = fecha_fin;
     if (lugar !== undefined) updateData.lugar = lugar;
     if (unidad_academica_id !== undefined) updateData.unidad_academica_id = unidad_academica_id;
-    if (organizacion_externa_id !== undefined) updateData.organizacion_externa_id = organizacion_externa_id;
 
     const updatedEvent = await eventService.updateEvent(id, updateData);
 
@@ -136,12 +134,28 @@ const createEvent = async (req, res) => {
       fecha_fin, 
       lugar,
       unidad_academica_id,
-      organizacion_externa_id,
+      organizaciones_externas_ids,
+      responsables,
       aval_pdf,
       acta_comite_pdf
     } = req.body;
 
     const organizador_id = req.user.id;
+
+    // Manejar organizaciones_externas_ids que puede venir como array, string separado por comas, o string único
+    let organizacionesArray = [];
+    if (organizaciones_externas_ids) {
+      if (Array.isArray(organizaciones_externas_ids)) {
+        organizacionesArray = organizaciones_externas_ids;
+      } else if (typeof organizaciones_externas_ids === 'string') {
+        // Si viene como string separado por comas
+        if (organizaciones_externas_ids.includes(',')) {
+          organizacionesArray = organizaciones_externas_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        } else {
+          organizacionesArray = [parseInt(organizaciones_externas_ids)];
+        }
+      }
+    }
 
     const eventData = {
       titulo,
@@ -151,7 +165,8 @@ const createEvent = async (req, res) => {
       fecha_fin,
       lugar,
       unidad_academica_id,
-      organizacion_externa_id,
+      organizaciones_externas_ids: organizacionesArray,
+      responsables,
       aval_pdf,
       acta_comite_pdf
     };
@@ -177,10 +192,68 @@ const createEvent = async (req, res) => {
   }
 };
 
+// Función adicional: Obtener todas las unidades académicas
+const getAllAcademicUnits = async (req, res) => {
+  try {
+    const units = await eventService.getAllAcademicUnits();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        units
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo unidades académicas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// HU1.4 - Obtener eventos del organizador (Mis eventos)
+const getMyEvents = async (req, res) => {
+  try {
+    const organizadorId = req.user.id;
+    const { estado, titulo, fecha_inicio, fecha_fin } = req.query;
+
+    console.log('🔍 Buscando eventos para organizador:', organizadorId);
+    console.log('📋 Filtros aplicados:', { estado, titulo, fecha_inicio, fecha_fin });
+
+    const filters = {};
+    if (estado) filters.estado = estado;
+    if (titulo) filters.titulo = titulo;
+    if (fecha_inicio) filters.fecha_inicio = fecha_inicio;
+    if (fecha_fin) filters.fecha_fin = fecha_fin;
+
+    const result = await eventService.getUserEvents(organizadorId, filters);
+
+    console.log('✅ Eventos encontrados:', result.events?.length || 0);
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo eventos del usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   createEvent,
   updateEvent,
   submitEventForValidation,
   getEventById,
-  getEventsByStatus
+  getEventsByStatus,
+  getAllAcademicUnits,
+  getMyEvents
 };

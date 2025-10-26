@@ -54,20 +54,20 @@ const register = async (req, res) => {
   console.log("🧾 Content-Type:", req.get('Content-Type'));
 
   try {
-    const { nombre, correo, contrasena, rol_id } = req.body;
-    console.log("📋 Datos extraídos:", { nombre, correo, contrasena, rol_id });
+    const { nombre, correo, contrasena, telefono, rol_id } = req.body;
+    console.log("📋 Datos extraídos:", { nombre, correo, contrasena, telefono, rol_id });
 
     // Verifica campos requeridos
-    if (!nombre || !correo || !contrasena || !rol_id) {
-      console.log("❌ Faltan datos:", { nombre: !!nombre, correo: !!correo, contrasena: !!contrasena, rol_id: !!rol_id });
+    if (!nombre || !correo || !contrasena || !telefono || !rol_id) {
+      console.log("❌ Faltan datos:", { nombre: !!nombre, correo: !!correo, contrasena: !!contrasena, telefono: !!telefono, rol_id: !!rol_id });
       return res.status(400).json({
         success: false,
         message: "Faltan datos requeridos",
-        received: { nombre, correo, contrasena, rol_id }
+        received: { nombre, correo, contrasena, telefono, rol_id }
       });
     }
 
-    const result = await authService.register({ nombre, correo, contrasena, rol_id });
+    const result = await authService.register({ nombre, correo, contrasena, telefono, rol_id });
 
     console.log("✅ Usuario registrado correctamente");
 
@@ -114,10 +114,10 @@ const verifyToken = async (req, res) => {
 // HU3.3 - Edición de perfil de usuario
 const updateProfile = async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre, telefono, nuevaContrasena } = req.body;
     const userId = req.user.id;
 
-    const updatedUser = await authService.updateProfile(userId, { nombre });
+    const updatedUser = await authService.updateProfile(userId, { nombre, telefono, nuevaContrasena });
 
     res.status(200).json({
       success: true,

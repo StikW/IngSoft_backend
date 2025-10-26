@@ -35,6 +35,7 @@ class AuthService {
         id: user.id,
         nombre: user.nombre,
         correo: user.correo,
+        telefono: user.telefono,
         rol: user.rol_nombre,
         rol_id: user.rol_id,
       }
@@ -43,7 +44,29 @@ class AuthService {
 
   // Registrar nuevo usuario
   async register(userData) {
-    const { nombre, correo, contrasena, rol_id } = userData;
+    const { nombre, correo, contrasena, telefono, rol_id } = userData;
+
+    // Validar dominio institucional
+    const institutionalDomain = '@uao.edu.co';
+    if (!correo.toLowerCase().endsWith(institutionalDomain)) {
+      throw new Error('Solo se permiten correos electrónicos institucionales (@uao.edu.co)');
+    }
+
+    // Validar que no se esté intentando registrar un secretario o administrador
+    const parsedRolId = parseInt(rol_id);
+    
+    if (parsedRolId === 3) {
+      throw new Error('No se permiten registros de secretarios académicos. Los secretarios están preconfigurados en el sistema.');
+    }
+
+    if (parsedRolId === 4) {
+      throw new Error('No se permiten registros de administradores. Los administradores están preconfigurados en el sistema.');
+    }
+
+    // Verificar que el rol sea válido (solo 1, 2)
+    if (![1, 2].includes(parsedRolId)) {
+      throw new Error('Rol inválido. Solo se permiten registros para usuarios institucionales (Estudiante, Docente)');
+    }
 
     // Verificar si el correo ya existe
     const emailExists = await userRepository.existsByEmail(correo);
@@ -59,6 +82,7 @@ class AuthService {
       nombre,
       correo,
       contrasena: hashedPassword,
+      telefono,
       rol_id
     });
 
@@ -66,6 +90,7 @@ class AuthService {
       id: userId,
       nombre,
       correo,
+      telefono,
       rol_id,
     };
   }
@@ -83,15 +108,31 @@ class AuthService {
 
   // Actualizar perfil de usuario
   async updateProfile(userId, profileData) {
-    const { nombre } = profileData;
+    const { nombre, telefono, nuevaContrasena } = profileData;
 
     // Validar que se proporcionó al menos el nombre
     if (!nombre || nombre.trim().length < 2) {
       throw new Error('El nombre es requerido y debe tener al menos 2 caracteres');
     }
 
-    // Actualizar perfil
-    await userRepository.updateProfile(userId, nombre.trim());
+    // Actualizar perfil básico
+    await userRepository.updateProfile(userId, nombre.trim(), telefono);
+
+    // Si se proporciona una nueva contraseña, actualizarla
+    if (nuevaContrasena) {
+      // Validar nueva contraseña
+      if (nuevaContrasena.length < 4) {
+        throw new Error('La contraseña debe tener al menos 4 caracteres');
+      }
+
+      if (nuevaContrasena.includes(' ')) {
+        throw new Error('La contraseña no puede contener espacios');
+      }
+
+      // Encriptar nueva contraseña
+      const hashedPassword = await bcrypt.hash(nuevaContrasena, 10);
+      await userRepository.updatePassword(userId, hashedPassword);
+    }
 
     // Obtener el usuario actualizado
     const updatedUser = await userRepository.findById(userId);

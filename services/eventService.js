@@ -11,7 +11,8 @@ class EventService {
       fecha_fin,
       lugar,
       unidad_academica_id,
-      organizacion_externa_id,
+      organizaciones_externas_ids,
+      responsables,
       aval_pdf,
       acta_comite_pdf
     } = eventData;
@@ -24,11 +25,13 @@ class EventService {
       }
     }
 
-    // Verificar que la organización externa existe (si se proporciona)
-    if (organizacion_externa_id) {
-      const orgExists = await eventRepository.verifyOrganizationExists(organizacion_externa_id);
-      if (!orgExists) {
-        throw new Error('Organización externa no encontrada');
+    // Verificar que las organizaciones externas existen (si se proporcionan)
+    if (organizaciones_externas_ids && Array.isArray(organizaciones_externas_ids)) {
+      for (const orgId of organizaciones_externas_ids) {
+        const orgExists = await eventRepository.verifyOrganizationExists(orgId);
+        if (!orgExists) {
+          throw new Error(`Organización externa con ID ${orgId} no encontrada`);
+        }
       }
     }
 
@@ -42,10 +45,27 @@ class EventService {
       lugar,
       unidad_academica_id,
       organizador_id: organizadorId,
-      organizacion_externa_id,
       aval_pdf,
       acta_comite_pdf
     });
+
+    // Asociar organizaciones externas al evento (relación N:M)
+    if (organizaciones_externas_ids && Array.isArray(organizaciones_externas_ids)) {
+      for (const orgId of organizaciones_externas_ids) {
+        await eventRepository.addOrganizationToEvent(eventId, orgId);
+      }
+    }
+
+    // Asociar responsables al evento (relación N:M)
+    if (responsables && Array.isArray(responsables)) {
+      for (const responsable of responsables) {
+        await eventRepository.addResponsibleToEvent(
+          eventId, 
+          responsable.usuario_id, 
+          responsable.rol_responsable
+        );
+      }
+    }
 
     // Obtener el evento creado con información completa
     const newEvent = await eventRepository.findById(eventId);
@@ -114,7 +134,21 @@ class EventService {
       throw new Error('Evento no encontrado');
     }
 
+    // Obtener organizaciones asociadas
+    const organizations = await eventRepository.getEventOrganizations(eventId);
+    event.organizaciones = organizations;
+
+    // Obtener responsables asociados
+    const responsibles = await eventRepository.getEventResponsibles(eventId);
+    event.responsables = responsibles;
+
     return event;
+  }
+
+  // Obtener todas las unidades académicas
+  async getAllAcademicUnits() {
+    const units = await eventRepository.getAllAcademicUnits();
+    return units;
   }
 
   // Obtener eventos por estado con paginación
@@ -124,6 +158,12 @@ class EventService {
     const validLimit = Math.max(1, Math.min(100, parseInt(limit) || 10));
 
     const result = await eventRepository.findByStatus(estado, validPage, validLimit);
+    return result;
+  }
+
+  // Obtener eventos del usuario organizador con filtros
+  async getUserEvents(organizadorId, filters = {}) {
+    const result = await eventRepository.findByOrganizer(organizadorId, filters);
     return result;
   }
 }

@@ -9,6 +9,7 @@ class UserRepository {
         u.nombre,
         u.correo,
         u.contrasena,
+        u.telefono,
         u.rol_id,
         r.nombre as rol_nombre,
         u.activo
@@ -28,6 +29,7 @@ class UserRepository {
         u.id,
         u.nombre,
         u.correo,
+        u.telefono,
         u.rol_id,
         r.nombre as rol_nombre,
         u.activo
@@ -48,23 +50,23 @@ class UserRepository {
 
   // Crear nuevo usuario
   async create(userData) {
-    const { nombre, correo, contrasena, rol_id } = userData;
+    const { nombre, correo, contrasena, telefono, rol_id } = userData;
     const query = `
-      INSERT INTO usuarios (nombre, correo, contrasena, rol_id, activo)
-      VALUES (?, ?, ?, ?, 1)
+      INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol_id, activo)
+      VALUES (?, ?, ?, ?, ?, 1)
     `;
-    const result = await executeQuery(query, [nombre, correo, contrasena, rol_id]);
+    const result = await executeQuery(query, [nombre, correo, contrasena, telefono || null, rol_id]);
     return result.insertId;
   }
 
   // Actualizar perfil de usuario
-  async updateProfile(id, nombre) {
+  async updateProfile(id, nombre, telefono) {
     const query = `
       UPDATE usuarios 
-      SET nombre = ?
+      SET nombre = ?, telefono = ?
       WHERE id = ?
     `;
-    await executeQuery(query, [nombre, id]);
+    await executeQuery(query, [nombre, telefono || null, id]);
   }
 
   // Actualizar contraseña

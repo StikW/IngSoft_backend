@@ -4,6 +4,12 @@ const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
+// Validar dominio institucional
+const validateInstitutionalEmail = (email) => {
+  const institutionalDomain = '@uao.edu.co';
+  return email.toLowerCase().endsWith(institutionalDomain);
+};
+
 const validateRequired = (data, requiredFields) => {
   const missing = [];
   
@@ -114,23 +120,61 @@ const validateEventData = (req, res, next) => {
 
 // Middleware para validar datos de registro de usuario
 const validateUserRegistrationData = (req, res, next) => {
-  const { correo, contrasena, nombre, rol_id } = req.body;
+  const { correo, contrasena, nombre, telefono, rol_id } = req.body;
   const errors = [];
 
   if (!correo || !validateEmail(correo)) {
     errors.push('Correo inválido');
   }
 
+  // Validar dominio institucional
+  if (correo && !validateInstitutionalEmail(correo)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Solo se permiten correos electrónicos institucionales (@uao.edu.co)',
+      errors: ['El correo debe pertenecer al dominio institucional @uao.edu.co']
+    });
+  }
+
   if (!contrasena || contrasena.length < 4) {
     errors.push('La contraseña debe tener al menos 4 caracteres');
+  }
+
+  // Validar que la contraseña no contenga espacios
+  if (contrasena && contrasena.includes(' ')) {
+    errors.push('La contraseña no puede contener espacios');
   }
 
   if (!nombre || nombre.trim().length < 2) {
     errors.push('El nombre debe tener al menos 2 caracteres');
   }
 
-  if (!rol_id || ![1, 2, 3, 4].includes(parseInt(rol_id))) {
-    errors.push('Rol inválido. Debe ser 1 (estudiante), 2 (docente), 3 (secretario) o 4 (administrador)');
+  if (!telefono || telefono.trim().length === 0) {
+    errors.push('El número de teléfono es obligatorio');
+  }
+
+  // Validar que el rol sea válido y NO sea administrador (rol_id = 4) o secretario (rol_id = 3)
+  const parsedRolId = parseInt(rol_id);
+  if (!rol_id || ![1, 2].includes(parsedRolId)) {
+    errors.push('Rol inválido. Solo se permiten registros para: Estudiante (1) o Docente (2). Los secretarios y administradores están preconfigurados.');
+  }
+
+  // Rechazar explícitamente el registro de secretarios
+  if (parsedRolId === 3) {
+    return res.status(403).json({
+      success: false,
+      message: 'No se permiten registros de secretarios académicos. Los secretarios están preconfigurados en el sistema.',
+      errors: ['El rol de secretario académico no está disponible para registro público']
+    });
+  }
+
+  // Rechazar explícitamente el registro de administradores
+  if (parsedRolId === 4) {
+    return res.status(403).json({
+      success: false,
+      message: 'No se permiten registros de administradores. Los administradores están preconfigurados en el sistema.',
+      errors: ['El rol de administrador no está disponible para registro público']
+    });
   }
 
   if (errors.length > 0) {
@@ -262,6 +306,7 @@ const validateEventCreationData = (req, res, next) => {
 
 module.exports = {
   validateEmail,
+  validateInstitutionalEmail,
   validateRequired,
   validateUserData,
   validateUserRegistrationData,
