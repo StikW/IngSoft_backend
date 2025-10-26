@@ -132,7 +132,6 @@ class EventRepository {
       throw new Error('No se proporcionaron campos para actualizar');
     }
 
-    updateFields.push('fecha_actualizacion = NOW()');
     updateParams.push(id);
 
     const query = `
@@ -148,10 +147,20 @@ class EventRepository {
   async updateStatus(id, estado) {
     const query = `
       UPDATE eventos 
-      SET estado = ?, fecha_actualizacion = NOW()
+      SET estado = ?
       WHERE id = ?
     `;
     await executeQuery(query, [estado, id]);
+  }
+
+  // Actualizar estado del evento con justificación (para rechazo)
+  async updateStatusWithJustification(id, estado, justificacion) {
+    const query = `
+      UPDATE eventos 
+      SET estado = ?, justificacion_rechazo = ?
+      WHERE id = ?
+    `;
+    await executeQuery(query, [estado, justificacion, id]);
   }
 
   // Buscar eventos por estado con paginación

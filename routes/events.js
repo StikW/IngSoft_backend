@@ -7,7 +7,9 @@ const {
   getEventById,
   getEventsByStatus,
   getAllAcademicUnits,
-  getMyEvents
+  getMyEvents,
+  approveEvent,
+  rejectEvent
 } = require('../controllers/eventController');
 const { validateEventData, validateEventCreationData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -39,6 +41,14 @@ router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'sec
 // HU1.5 - Envío de evento a validación/aprobación
 // POST /api/events/:id/submit-validation
 router.post('/:id/submit-validation', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), submitEventForValidation);
+
+// HU4.1 - Aprobar evento
+// POST /api/events/:id/approve
+router.post('/:id/approve', authenticateToken, requireRole(['secretario', 'administrador']), approveEvent);
+
+// HU4.1 - Rechazar evento
+// POST /api/events/:id/reject
+router.post('/:id/reject', authenticateToken, requireRole(['secretario', 'administrador']), rejectEvent);
 
 module.exports = router;
 

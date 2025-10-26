@@ -110,9 +110,15 @@ class EventService {
 
     // Validar que el evento tenga todos los campos requeridos
     const requiredFields = ['titulo', 'descripcion', 'fecha_inicio', 'fecha_fin', 'lugar'];
-    const missingFields = requiredFields.filter(field => 
-      !existingEvent[field] || existingEvent[field].trim() === ''
-    );
+    const missingFields = requiredFields.filter(field => {
+      const value = existingEvent[field];
+      // Para campos de fecha, solo verificar que existan
+      if (field === 'fecha_inicio' || field === 'fecha_fin') {
+        return !value;
+      }
+      // Para campos de texto, verificar que no estén vacíos
+      return !value || (typeof value === 'string' && value.trim() === '');
+    });
 
     if (missingFields.length > 0) {
       throw new Error(`El evento debe tener todos los campos requeridos antes de enviarse a validación. Faltan: ${missingFields.join(', ')}`);
@@ -165,6 +171,55 @@ class EventService {
   async getUserEvents(organizadorId, filters = {}) {
     const result = await eventRepository.findByOrganizer(organizadorId, filters);
     return result;
+  }
+
+  // Aprobar evento (HU4.1)
+  async approveEvent(eventId) {
+    // Verificar que el evento existe
+    const existingEvent = await eventRepository.findBasicById(eventId);
+    
+    if (!existingEvent) {
+      throw new Error('Evento no encontrado');
+    }
+
+    // Solo permitir aprobar eventos en estado 'enviado'
+    if (existingEvent.estado !== 'enviado') {
+      throw new Error('Solo se pueden aprobar eventos en estado "enviado"');
+    }
+
+    // Actualizar estado a 'aprobado'
+    await eventRepository.updateStatus(eventId, 'aprobado');
+
+    // Obtener el evento actualizado
+    const updatedEvent = await eventRepository.findById(eventId);
+    return updatedEvent;
+  }
+
+  // Rechazar evento (HU4.1)
+  async rejectEvent(eventId, justificacion) {
+    // Verificar que el evento existe
+    const existingEvent = await eventRepository.findBasicById(eventId);
+    
+    if (!existingEvent) {
+      throw new Error('Evento no encontrado');
+    }
+
+    // Solo permitir rechazar eventos en estado 'enviado'
+    if (existingEvent.estado !== 'enviado') {
+      throw new Error('Solo se pueden rechazar eventos en estado "envió"');
+    }
+
+    // Validar que se proporcionó una justificación
+    if (!justificacion || justificacion.trim() === '') {
+      throw new Error('La justificación del rechazo es obligatoria');
+    }
+
+    // Actualizar estado a 'rechazado' con justificación
+    await eventRepository.updateStatusWithJustification(eventId, 'rechazado', justificacion.trim());
+
+    // Obtener el evento actualizado
+    const updatedEvent = await eventRepository.findById(eventId);
+    return updatedEvent;
   }
 }
 

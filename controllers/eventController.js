@@ -248,6 +248,62 @@ const getMyEvents = async (req, res) => {
   }
 };
 
+// HU4.1 - Aprobar evento
+const approveEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedEvent = await eventService.approveEvent(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Evento aprobado exitosamente',
+      data: {
+        event: updatedEvent
+      }
+    });
+
+  } catch (error) {
+    console.error('Error aprobando evento:', error);
+    const statusCode = error.message.includes('no encontrado') ? 404 :
+                      error.message.includes('Solo se pueden aprobar') ? 400 : 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// HU4.1 - Rechazar evento
+const rejectEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { justificacion } = req.body;
+
+    const updatedEvent = await eventService.rejectEvent(id, justificacion);
+
+    res.status(200).json({
+      success: true,
+      message: 'Evento rechazado exitosamente',
+      data: {
+        event: updatedEvent
+      }
+    });
+
+  } catch (error) {
+    console.error('Error rechazando evento:', error);
+    const statusCode = error.message.includes('no encontrado') ? 404 :
+                      error.message.includes('Solo se pueden rechazar') ? 400 :
+                      error.message.includes('justificación') ? 400 : 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   createEvent,
   updateEvent,
@@ -255,5 +311,7 @@ module.exports = {
   getEventById,
   getEventsByStatus,
   getAllAcademicUnits,
-  getMyEvents
+  getMyEvents,
+  approveEvent,
+  rejectEvent
 };
