@@ -83,8 +83,8 @@ const validateEventData = (req, res, next) => {
     errors.push('El título debe tener al menos 3 caracteres');
   }
 
-  if (!descripcion || descripcion.trim().length < 10) {
-    errors.push('La descripción debe tener al menos 10 caracteres');
+  if (!descripcion || descripcion.trim().length < 3) {
+    errors.push('La descripción debe tener al menos 3 caracteres');
   }
 
   if (!tipo || !['academico', 'ludico'].includes(tipo)) {

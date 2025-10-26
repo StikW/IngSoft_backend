@@ -33,7 +33,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo 100 requests por IP por ventana de tiempo
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // En desarrollo: 1000 requests, en producción: 100
   message: {
     success: false,
     message: 'Demasiadas solicitudes desde esta IP, intenta de nuevo más tarde.'
