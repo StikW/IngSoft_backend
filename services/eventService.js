@@ -27,13 +27,16 @@ class EventService {
       }
     }
 
-    // Verificar que las organizaciones externas existen (si se proporcionan)
-    if (organizaciones_externas_ids && Array.isArray(organizaciones_externas_ids)) {
-      for (const orgId of organizaciones_externas_ids) {
-        const orgExists = await eventRepository.verifyOrganizationExists(orgId);
-        if (!orgExists) {
-          throw new Error(`Organización externa con ID ${orgId} no encontrada`);
-        }
+    // Validar que se proporcione al menos una organización externa
+    if (!organizaciones_externas_ids || !Array.isArray(organizaciones_externas_ids) || organizaciones_externas_ids.length === 0) {
+      throw new Error('Debe seleccionar al menos una organización externa');
+    }
+
+    // Verificar que las organizaciones externas existen
+    for (const orgId of organizaciones_externas_ids) {
+      const orgExists = await eventRepository.verifyOrganizationExists(orgId);
+      if (!orgExists) {
+        throw new Error(`Organización externa con ID ${orgId} no encontrada`);
       }
     }
 
@@ -52,10 +55,8 @@ class EventService {
     });
 
     // Asociar organizaciones externas al evento (relación N:M)
-    if (organizaciones_externas_ids && Array.isArray(organizaciones_externas_ids)) {
-      for (const orgId of organizaciones_externas_ids) {
-        await eventRepository.addOrganizationToEvent(eventId, orgId);
-      }
+    for (const orgId of organizaciones_externas_ids) {
+      await eventRepository.addOrganizationToEvent(eventId, orgId);
     }
 
     // Asociar responsables al evento (relación N:M)

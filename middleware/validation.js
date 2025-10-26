@@ -60,7 +60,12 @@ const validateOrganizationData = (req, res, next) => {
   }
 
   if (telefono && telefono.length < 7) {
-    errors.push('Teléfono inválido');
+    errors.push('El teléfono debe tener al menos 7 dígitos');
+  }
+
+  // Validar que el teléfono solo contenga números
+  if (telefono && !/^[0-9]+$/.test(telefono)) {
+    errors.push('El teléfono solo puede contener números');
   }
 
   if (errors.length > 0) {
@@ -105,6 +110,18 @@ const validateEventData = (req, res, next) => {
 
   if (!lugar || lugar.trim().length < 3) {
     errors.push('El lugar debe tener al menos 3 caracteres');
+  }
+
+  // Validar que se proporcione al menos una organización externa
+  let organizaciones_externas_ids = req.body.organizaciones_externas_ids;
+  
+  // Si viene como string separado por comas, convertirlo a array
+  if (typeof organizaciones_externas_ids === 'string') {
+    organizaciones_externas_ids = organizaciones_externas_ids.split(',').filter(id => id.trim() !== '');
+  }
+  
+  if (!organizaciones_externas_ids || organizaciones_externas_ids.length === 0) {
+    errors.push('Debe seleccionar al menos una organización externa');
   }
 
   if (errors.length > 0) {
@@ -153,6 +170,15 @@ const validateUserRegistrationData = (req, res, next) => {
     errors.push('El número de teléfono es obligatorio');
   }
 
+  // Validar que el teléfono solo contenga números y tenga longitud mínima
+  if (telefono && !/^[0-9]+$/.test(telefono)) {
+    errors.push('El teléfono solo puede contener números');
+  }
+
+  if (telefono && telefono.length < 7) {
+    errors.push('El teléfono debe tener al menos 7 dígitos');
+  }
+
   // Validar que el rol sea válido y NO sea administrador (rol_id = 4) o secretario (rol_id = 3)
   const parsedRolId = parseInt(rol_id);
   if (!rol_id || ![1, 2].includes(parsedRolId)) {
@@ -190,7 +216,7 @@ const validateUserRegistrationData = (req, res, next) => {
 
 // Middleware para validar datos de actualización de perfil de usuario
 const validateUserProfileData = (req, res, next) => {
-  const { nombre } = req.body;
+  const { nombre, telefono } = req.body;
   const errors = [];
 
   if (!nombre || nombre.trim().length < 2) {
@@ -199,6 +225,22 @@ const validateUserProfileData = (req, res, next) => {
 
   if (nombre && nombre.trim().length > 100) {
     errors.push('El nombre no puede tener más de 100 caracteres');
+  }
+
+  // Validar teléfono si se proporciona
+  if (telefono !== undefined) {
+    if (!telefono || telefono.trim().length === 0) {
+      errors.push('El número de teléfono es obligatorio');
+    } else {
+      // Validar que el teléfono solo contenga números
+      if (!/^[0-9]+$/.test(telefono)) {
+        errors.push('El teléfono solo puede contener números');
+      }
+      
+      if (telefono.length < 7) {
+        errors.push('El teléfono debe tener al menos 7 dígitos');
+      }
+    }
   }
 
   if (errors.length > 0) {

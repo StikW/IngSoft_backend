@@ -320,8 +320,22 @@ const deleteEvent = async (req, res) => {
       });
     }
 
-    // Verificar que el usuario es el organizador del evento
-    if (existingEvent.organizador_id !== userId) {
+    // Verificar permisos para eliminar el evento
+    const userRole = req.user.rol_id;
+    const isSecretarioOrAdmin = userRole === 3 || userRole === 4; // secretario o administrador
+    const isEventOrganizer = existingEvent.organizador_id === userId;
+    
+    // Solo se pueden eliminar eventos en estado 'borrador'
+    if (existingEvent.estado !== 'borrador') {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden eliminar eventos en estado borrador'
+      });
+    }
+    
+    // Verificar permisos: secretarios/administradores pueden eliminar cualquier evento en borrador,
+    // organizadores solo pueden eliminar sus propios eventos en borrador
+    if (!isSecretarioOrAdmin && !isEventOrganizer) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permisos para eliminar este evento'
