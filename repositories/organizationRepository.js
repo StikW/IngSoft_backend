@@ -4,6 +4,7 @@ class OrganizationRepository {
   // Crear nueva organización
   async create(organizationData) {
     const {
+      nit,
       nombre,
       representante_legal,
       telefono,
@@ -15,11 +16,12 @@ class OrganizationRepository {
 
     const query = `
       INSERT INTO organizaciones_externas 
-      (nombre, representante_legal, telefono, ubicacion, sector_economico, actividad_principal, certificado_pdf, fecha_registro)
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+      (nit, nombre, representante_legal, telefono, ubicacion, sector_economico, actividad_principal, certificado_pdf, fecha_registro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
 
     const result = await executeQuery(query, [
+      nit,
       nombre,
       representante_legal,
       telefono || null,
@@ -39,7 +41,23 @@ class OrganizationRepository {
     return organization;
   }
 
-  // Buscar organizaciones por nombre (búsqueda parcial)
+  // Buscar organizaciones por nombre o NIT (búsqueda parcial)
+  async searchByNameOrNit(searchTerm) {
+    let query = 'SELECT * FROM organizaciones_externas WHERE 1=1';
+    const params = [];
+
+    if (searchTerm) {
+      query += ' AND (nombre LIKE ? OR nit LIKE ?)';
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    }
+
+    query += ' ORDER BY nombre ASC';
+
+    const organizations = await executeQuery(query, params);
+    return organizations;
+  }
+
+  // Buscar organizaciones por nombre (búsqueda parcial) - método legacy
   async searchByName(nombre) {
     let query = 'SELECT * FROM organizaciones_externas WHERE 1=1';
     const params = [];
@@ -126,6 +144,20 @@ class OrganizationRepository {
   async existsByNameExcludingId(nombre, excludeId) {
     const query = 'SELECT id FROM organizaciones_externas WHERE nombre = ? AND id != ?';
     const result = await executeQuery(query, [nombre, excludeId]);
+    return result.length > 0;
+  }
+
+  // Verificar si existe una organización con el NIT dado
+  async existsByNit(nit) {
+    const query = 'SELECT id FROM organizaciones_externas WHERE nit = ?';
+    const result = await executeQuery(query, [nit]);
+    return result.length > 0;
+  }
+
+  // Verificar si existe una organización con el NIT dado (excluyendo un ID específico)
+  async existsByNitExcludingId(nit, excludeId) {
+    const query = 'SELECT id FROM organizaciones_externas WHERE nit = ? AND id != ?';
+    const result = await executeQuery(query, [nit, excludeId]);
     return result.length > 0;
   }
 

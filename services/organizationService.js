@@ -5,6 +5,7 @@ class OrganizationService {
   // Crear nueva organización
   async createOrganization(organizationData) {
     const {
+      nit,
       nombre,
       representante_legal,
       telefono,
@@ -20,8 +21,15 @@ class OrganizationService {
       throw new Error('Ya existe una organización con ese nombre');
     }
 
+    // Verificar si ya existe una organización con el mismo NIT
+    const nitExists = await organizationRepository.existsByNit(nit);
+    if (nitExists) {
+      throw new Error('Ya existe una organización con ese NIT');
+    }
+
     // Crear la organización
     const organizationId = await organizationRepository.create({
+      nit,
       nombre,
       representante_legal,
       telefono,
@@ -36,9 +44,9 @@ class OrganizationService {
     return newOrganization;
   }
 
-  // Buscar organizaciones por nombre
-  async searchOrganizations(nombre) {
-    const organizations = await organizationRepository.searchByName(nombre);
+  // Buscar organizaciones por nombre o NIT
+  async searchOrganizations(searchTerm) {
+    const organizations = await organizationRepository.searchByNameOrNit(searchTerm);
     return {
       organizations,
       total: organizations.length
@@ -72,6 +80,17 @@ class OrganizationService {
       );
       if (nameExists) {
         throw new Error('Ya existe una organización con ese nombre');
+      }
+    }
+
+    // Verificar si el nuevo NIT ya existe (si se está cambiando)
+    if (updateData.nit) {
+      const nitExists = await organizationRepository.existsByNitExcludingId(
+        updateData.nit, 
+        organizationId
+      );
+      if (nitExists) {
+        throw new Error('Ya existe una organización con ese NIT');
       }
     }
 

@@ -4,6 +4,7 @@ const organizationService = require('../services/organizationService');
 const createOrganization = async (req, res) => {
   try {
     const { 
+      nit,
       nombre, 
       representante_legal, 
       telefono, 
@@ -16,6 +17,7 @@ const createOrganization = async (req, res) => {
     const certificado_pdf = req.file ? `/uploads/${req.file.filename}` : null;
 
     const organizationData = {
+      nit,
       nombre,
       representante_legal,
       telefono,
@@ -46,12 +48,12 @@ const createOrganization = async (req, res) => {
   }
 };
 
-// HU2.2 - Búsqueda de organización externa (SELECT con filtro por nombre)
+// HU2.2 - Búsqueda de organización externa (SELECT con filtro por nombre o NIT)
 const searchOrganizations = async (req, res) => {
   try {
-    const { nombre } = req.query;
+    const { search } = req.query;
 
-    const result = await organizationService.searchOrganizations(nombre);
+    const result = await organizationService.searchOrganizations(search);
 
     res.status(200).json({
       success: true,
@@ -98,6 +100,7 @@ const updateOrganization = async (req, res) => {
   try {
     const { id } = req.params;
     const { 
+      nit,
       nombre, 
       representante_legal, 
       telefono, 
@@ -110,6 +113,7 @@ const updateOrganization = async (req, res) => {
     const certificado_pdf = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     const updateData = {};
+    if (nit !== undefined) updateData.nit = nit;
     if (nombre !== undefined) updateData.nombre = nombre;
     if (representante_legal !== undefined) updateData.representante_legal = representante_legal;
     if (telefono !== undefined) updateData.telefono = telefono;
