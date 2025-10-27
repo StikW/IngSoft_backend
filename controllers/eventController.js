@@ -14,6 +14,10 @@ const updateEvent = async (req, res) => {
       unidad_academica_id
     } = req.body;
 
+    // Obtener archivos subidos
+    const aval_pdf = req.files && req.files.aval_pdf ? `/uploads/${req.files.aval_pdf[0].filename}` : undefined;
+    const acta_comite_pdf = req.files && req.files.acta_comite_pdf ? `/uploads/${req.files.acta_comite_pdf[0].filename}` : undefined;
+
     const updateData = {};
     if (titulo !== undefined) updateData.titulo = titulo;
     if (descripcion !== undefined) updateData.descripcion = descripcion;
@@ -21,6 +25,8 @@ const updateEvent = async (req, res) => {
     if (fecha_fin !== undefined) updateData.fecha_fin = fecha_fin;
     if (lugar !== undefined) updateData.lugar = lugar;
     if (unidad_academica_id !== undefined) updateData.unidad_academica_id = unidad_academica_id;
+    if (aval_pdf !== undefined) updateData.aval_pdf = aval_pdf;
+    if (acta_comite_pdf !== undefined) updateData.acta_comite_pdf = acta_comite_pdf;
 
     const updatedEvent = await eventService.updateEvent(id, updateData);
 
@@ -136,10 +142,12 @@ const createEvent = async (req, res) => {
       lugar,
       unidad_academica_id,
       organizaciones_externas_ids,
-      responsables,
-      aval_pdf,
-      acta_comite_pdf
+      responsables
     } = req.body;
+
+    // Obtener archivos subidos
+    const aval_pdf = req.files && req.files.aval_pdf ? `/uploads/${req.files.aval_pdf[0].filename}` : null;
+    const acta_comite_pdf = req.files && req.files.acta_comite_pdf ? `/uploads/${req.files.acta_comite_pdf[0].filename}` : null;
 
     const organizador_id = req.user.id;
 

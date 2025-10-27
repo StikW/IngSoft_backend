@@ -1,4 +1,5 @@
 const organizationRepository = require('../repositories/organizationRepository');
+const { deleteFile } = require('../utils/fileUtils');
 
 class OrganizationService {
   // Crear nueva organización
@@ -58,8 +59,8 @@ class OrganizationService {
   // Actualizar organización
   async updateOrganization(organizationId, updateData) {
     // Verificar que la organización existe
-    const organizationExists = await organizationRepository.exists(organizationId);
-    if (!organizationExists) {
+    const existingOrganization = await organizationRepository.findById(organizationId);
+    if (!existingOrganization) {
       throw new Error('Organización no encontrada');
     }
 
@@ -72,6 +73,12 @@ class OrganizationService {
       if (nameExists) {
         throw new Error('Ya existe una organización con ese nombre');
       }
+    }
+
+    // Si se está actualizando el PDF, eliminar el archivo anterior
+    if (updateData.certificado_pdf && existingOrganization.certificado_pdf) {
+      console.log(`🗑️ Eliminando archivo anterior: ${existingOrganization.certificado_pdf}`);
+      await deleteFile(existingOrganization.certificado_pdf);
     }
 
     // Actualizar la organización
@@ -100,7 +107,13 @@ class OrganizationService {
       throw new Error('Organización no encontrada');
     }
 
-    // Eliminar la organización
+    // Eliminar archivos físicos asociados
+    if (existingOrganization.certificado_pdf) {
+      console.log(`🗑️ Eliminando archivo: ${existingOrganization.certificado_pdf}`);
+      await deleteFile(existingOrganization.certificado_pdf);
+    }
+
+    // Eliminar la organización de la base de datos
     const deleted = await organizationRepository.delete(organizationId);
     if (!deleted) {
       throw new Error('Error al eliminar la organización');

@@ -9,9 +9,11 @@ const createOrganization = async (req, res) => {
       telefono, 
       ubicacion, 
       sector_economico, 
-      actividad_principal, 
-      certificado_pdf 
+      actividad_principal
     } = req.body;
+
+    // Obtener la ruta completa del archivo PDF si se subió
+    const certificado_pdf = req.file ? `/uploads/${req.file.filename}` : null;
 
     const organizationData = {
       nombre,
@@ -101,9 +103,11 @@ const updateOrganization = async (req, res) => {
       telefono, 
       ubicacion, 
       sector_economico, 
-      actividad_principal, 
-      certificado_pdf 
+      actividad_principal
     } = req.body;
+
+    // Obtener la ruta completa del archivo PDF si se subió uno nuevo
+    const certificado_pdf = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     const updateData = {};
     if (nombre !== undefined) updateData.nombre = nombre;

@@ -10,10 +10,11 @@ const {
 } = require('../controllers/organizationController');
 const { validateOrganizationData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // HU2.1 - Registro de organización externa
 // POST /api/organizations
-router.post('/', authenticateToken, requireRole(['administrador', 'secretario']), validateOrganizationData, createOrganization);
+router.post('/', authenticateToken, requireRole(['administrador', 'secretario']), upload.single('certificado_pdf'), validateOrganizationData, createOrganization);
 
 // HU2.2 - Búsqueda de organización externa (con filtro por nombre)
 // GET /api/organizations/search
@@ -29,11 +30,10 @@ router.get('/:id', authenticateToken, getOrganizationById);
 
 // HU2.4 - Edición de organización externa
 // PUT /api/organizations/:id
-router.put('/:id', authenticateToken, requireRole(['administrador', 'secretario']), validateOrganizationData, updateOrganization);
+router.put('/:id', authenticateToken, requireRole(['administrador', 'secretario']), upload.single('certificado_pdf'), validateOrganizationData, updateOrganization);
 
 // HU2.5 - Eliminación de organización externa
 // DELETE /api/organizations/:id
 router.delete('/:id', authenticateToken, requireRole(['administrador', 'secretario']), deleteOrganization);
 
 module.exports = router;
-

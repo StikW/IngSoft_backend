@@ -68,6 +68,11 @@ const validateOrganizationData = (req, res, next) => {
     errors.push('El teléfono solo puede contener números');
   }
 
+  // Validar que se proporcione un certificado PDF
+  if (!req.file) {
+    errors.push('El certificado PDF es obligatorio');
+  }
+
   if (errors.length > 0) {
     return res.status(400).json({
       success: false,
@@ -122,6 +127,15 @@ const validateEventData = (req, res, next) => {
   
   if (!organizaciones_externas_ids || organizaciones_externas_ids.length === 0) {
     errors.push('Debe seleccionar al menos una organización externa');
+  }
+
+  // Validar que se proporcionen los documentos PDF obligatorios
+  if (!req.files || !req.files.aval_pdf) {
+    errors.push('El aval PDF es obligatorio');
+  }
+  
+  if (!req.files || !req.files.acta_comite_pdf) {
+    errors.push('El acta de comité PDF es obligatorio');
   }
 
   if (errors.length > 0) {

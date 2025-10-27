@@ -14,10 +14,14 @@ const {
 } = require('../controllers/eventController');
 const { validateEventData, validateEventCreationData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // HU1.1 - Registro de evento
 // POST /api/events
-router.post('/', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), validateEventData, createEvent);
+router.post('/', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), upload.fields([
+  { name: 'aval_pdf', maxCount: 1 },
+  { name: 'acta_comite_pdf', maxCount: 1 }
+]), validateEventData, createEvent);
 
 // Obtener eventos por estado (con paginación)
 // GET /api/events?estado=borrador&page=1&limit=10
@@ -37,7 +41,10 @@ router.get('/:id', authenticateToken, getEventById);
 
 // HU1.2 - Edición de evento antes de validación
 // PUT /api/events/:id
-router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), validateEventData, updateEvent);
+router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), upload.fields([
+  { name: 'aval_pdf', maxCount: 1 },
+  { name: 'acta_comite_pdf', maxCount: 1 }
+]), validateEventData, updateEvent);
 
 // HU1.5 - Envío de evento a validación/aprobación
 // POST /api/events/:id/submit-validation
