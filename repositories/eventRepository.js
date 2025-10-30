@@ -163,10 +163,8 @@ class EventRepository {
     await executeQuery(query, [estado, justificacion, id]);
   }
 
-  // Buscar eventos por estado con paginación
-  async findByStatus(estado, page = 1, limit = 10) {
-    const offset = (page - 1) * limit;
-    
+  // Buscar eventos por estado (sin paginación)
+  async findByStatus(estado) {
     let baseQuery = `
       FROM eventos e
       LEFT JOIN usuarios u ON e.organizador_id = u.id
@@ -179,12 +177,7 @@ class EventRepository {
       params.push(estado);
     }
 
-    // Contar total de registros
-    const countQuery = `SELECT COUNT(*) as total ${baseQuery}`;
-    const countResult = await executeQuery(countQuery, params);
-    const total = countResult[0].total;
-
-    // Obtener registros paginados
+    // Obtener registros
     const dataQuery = `
       SELECT e.*, 
              u.nombre as organizador_nombre
@@ -195,18 +188,10 @@ class EventRepository {
 
     const events = await executeQuery(dataQuery, dataParams);
 
-    return {
-      events,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    };
+    return events;
   }
 
-  // Buscar eventos por organizador con filtros
+  // Buscar eventos por organizador con filtros (sin paginación)
   async findByOrganizer(organizadorId, filters = {}) {
     // Asegurar que organizadorId sea un número
     const orgId = parseInt(organizadorId);
@@ -255,15 +240,7 @@ class EventRepository {
 
     const events = await executeQuery(dataQuery, params);
 
-    return {
-      events,
-      pagination: {
-        page: 1,
-        limit: events.length,
-        total: events.length,
-        pages: 1
-      }
-    };
+    return events;
   }
 
   // Verificar que la unidad académica existe

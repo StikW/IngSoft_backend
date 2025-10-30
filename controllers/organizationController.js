@@ -145,17 +145,14 @@ const updateOrganization = async (req, res) => {
   }
 };
 
-// Función adicional: Obtener todas las organizaciones (para listado completo)
+// Función adicional: Obtener todas las organizaciones (sin paginación)
 const getAllOrganizations = async (req, res) => {
   try {
-    const page = req.query.page;
-    const limit = req.query.limit;
-
-    const result = await organizationService.getAllOrganizations(page, limit);
+    const organizations = await organizationService.getAllOrganizations();
 
     res.status(200).json({
       success: true,
-      data: result
+      data: { organizations }
     });
 
   } catch (error) {

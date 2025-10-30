@@ -188,20 +188,16 @@ class EventService {
     return units;
   }
 
-  // Obtener eventos por estado con paginación
-  async getEventsByStatus(estado, page = 1, limit = 10) {
-    // Validar parámetros
-    const validPage = Math.max(1, parseInt(page) || 1);
-    const validLimit = Math.max(1, Math.min(100, parseInt(limit) || 10));
-
-    const result = await eventRepository.findByStatus(estado, validPage, validLimit);
-    return result;
+  // Obtener eventos por estado (sin paginación)
+  async getEventsByStatus(estado) {
+    const events = await eventRepository.findByStatus(estado);
+    return events;
   }
 
-  // Obtener eventos del usuario organizador con filtros
+  // Obtener eventos del usuario organizador con filtros (sin paginación)
   async getUserEvents(organizadorId, filters = {}) {
-    const result = await eventRepository.findByOrganizer(organizadorId, filters);
-    return result;
+    const events = await eventRepository.findByOrganizer(organizadorId, filters);
+    return events;
   }
 
   // Aprobar evento (HU4.1)

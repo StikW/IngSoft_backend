@@ -108,14 +108,10 @@ class OrganizationService {
     return updatedOrganization;
   }
 
-  // Obtener todas las organizaciones con paginación
-  async getAllOrganizations(page = 1, limit = 10) {
-    // Validar parámetros
-    const validPage = Math.max(1, parseInt(page) || 1);
-    const validLimit = Math.max(1, Math.min(100, parseInt(limit) || 10));
-
-    const result = await organizationRepository.findAll(validPage, validLimit);
-    return result;
+  // Obtener todas las organizaciones (sin paginación)
+  async getAllOrganizations() {
+    const organizations = await organizationRepository.findAll();
+    return organizations;
   }
 
   // Eliminar organización (solo secretarios y administradores)

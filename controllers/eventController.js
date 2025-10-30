@@ -104,20 +104,17 @@ const getEventById = async (req, res) => {
   }
 };
 
-// Función adicional: Obtener eventos por estado
+// Función adicional: Obtener eventos por estado (sin paginación)
 const getEventsByStatus = async (req, res) => {
   try {
     const estado = req.query.estado;
-    const page = req.query.page;
-    const limit = req.query.limit;
+    console.log('Parámetros eventos recibidos:', { estado });
 
-    console.log('Parámetros eventos recibidos:', { estado, page, limit });
-
-    const result = await eventService.getEventsByStatus(estado, page, limit);
+    const events = await eventService.getEventsByStatus(estado);
 
     res.status(200).json({
       success: true,
-      data: result
+      data: { events }
     });
 
   } catch (error) {
@@ -223,7 +220,7 @@ const getAllAcademicUnits = async (req, res) => {
   }
 };
 
-// HU1.4 - Obtener eventos del organizador (Mis eventos)
+// HU1.4 - Obtener eventos del organizador (Mis eventos) sin paginación
 const getMyEvents = async (req, res) => {
   try {
     const organizadorId = req.user.id;
@@ -238,13 +235,13 @@ const getMyEvents = async (req, res) => {
     if (fecha_inicio) filters.fecha_inicio = fecha_inicio;
     if (fecha_fin) filters.fecha_fin = fecha_fin;
 
-    const result = await eventService.getUserEvents(organizadorId, filters);
+    const events = await eventService.getUserEvents(organizadorId, filters);
 
-    console.log('✅ Eventos encontrados:', result.events?.length || 0);
+    console.log('✅ Eventos encontrados:', events?.length || 0);
 
     res.status(200).json({
       success: true,
-      data: result
+      data: { events }
     });
 
   } catch (error) {

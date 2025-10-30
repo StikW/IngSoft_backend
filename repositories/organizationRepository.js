@@ -73,37 +73,15 @@ class OrganizationRepository {
     return organizations;
   }
 
-  // Obtener todas las organizaciones con paginación
-  async findAll(page = 1, limit = 10) {
-    const offset = (page - 1) * limit;
-
-    const baseQuery = 'FROM organizaciones_externas WHERE 1=1';
-    const params = [];
-
-    // Contar total de registros
-    const countQuery = `SELECT COUNT(*) as total ${baseQuery}`;
-    const countResult = await executeQuery(countQuery, params);
-    const total = countResult[0].total;
-
-    // Obtener registros paginados
-    const dataQuery = `
-      SELECT * 
-      ${baseQuery}
+  // Obtener todas las organizaciones (sin paginación)
+  async findAll() {
+    const query = `
+      SELECT *
+      FROM organizaciones_externas
       ORDER BY nombre ASC
     `;
-    const dataParams = [...params];
-
-    const organizations = await executeQuery(dataQuery, dataParams);
-
-    return {
-      organizations,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    };
+    const organizations = await executeQuery(query);
+    return organizations;
   }
 
   // Actualizar organización
