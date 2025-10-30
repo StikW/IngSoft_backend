@@ -1,6 +1,7 @@
 const eventRepository = require('../repositories/eventRepository');
 const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
+const { deleteFile } = require('../utils/fileUtils');
 
 class EventService {
   // Crear nuevo evento
@@ -87,6 +88,19 @@ class EventService {
     // Solo permitir edición si el evento está en estado 'borrador', 'enviado' o 'rechazado'
     if (!['borrador', 'enviado', 'rechazado'].includes(existingEvent.estado)) {
       throw new Error('Solo se pueden editar eventos en estado "borrador", "enviado" o "rechazado"');
+    }
+
+    // Si se reemplazan archivos, eliminar los anteriores
+    try {
+      if (updateData.aval_pdf && existingEvent.aval_pdf && updateData.aval_pdf !== existingEvent.aval_pdf) {
+        await deleteFile(existingEvent.aval_pdf);
+      }
+      if (updateData.acta_comite_pdf && existingEvent.acta_comite_pdf && updateData.acta_comite_pdf !== existingEvent.acta_comite_pdf) {
+        await deleteFile(existingEvent.acta_comite_pdf);
+      }
+    } catch (fileDeleteError) {
+      console.error('Error eliminando archivos previos del evento:', fileDeleteError);
+      // No bloquear actualización por fallo al borrar archivos
     }
 
     // Actualizar el evento
@@ -276,6 +290,22 @@ class EventService {
     // Solo permitir eliminación si el evento está en estado 'borrador'
     if (existingEvent.estado !== 'borrador') {
       throw new Error('Solo se pueden eliminar eventos en estado "borrador"');
+    }
+
+    // Intentar eliminar archivos asociados si existen
+    try {
+      const fullEvent = await eventRepository.findById(eventId);
+      if (fullEvent) {
+        if (fullEvent.aval_pdf) {
+          await deleteFile(fullEvent.aval_pdf);
+        }
+        if (fullEvent.acta_comite_pdf) {
+          await deleteFile(fullEvent.acta_comite_pdf);
+        }
+      }
+    } catch (fileDeleteError) {
+      console.error('Error eliminando archivos asociados al evento:', fileDeleteError);
+      // No impedir la eliminación del registro si el borrado de archivos falla
     }
 
     // Eliminar el evento
