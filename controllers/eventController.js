@@ -28,7 +28,24 @@ const updateEvent = async (req, res) => {
     if (aval_pdf !== undefined) updateData.aval_pdf = aval_pdf;
     if (acta_comite_pdf !== undefined) updateData.acta_comite_pdf = acta_comite_pdf;
 
-    const updatedEvent = await eventService.updateEvent(id, updateData);
+    // Manejar organizaciones_externas_ids que puede venir como array, string separado por comas, o string único
+    let organizacionesArray = undefined;
+    if (req.body.organizaciones_externas_ids !== undefined) {
+      organizacionesArray = [];
+      const raw = req.body.organizaciones_externas_ids;
+      if (Array.isArray(raw)) {
+        organizacionesArray = raw.map(v => parseInt(v)).filter(v => !isNaN(v));
+      } else if (typeof raw === 'string') {
+        if (raw.includes(',')) {
+          organizacionesArray = raw.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        } else {
+          const parsed = parseInt(raw);
+          if (!isNaN(parsed)) organizacionesArray = [parsed];
+        }
+      }
+    }
+
+    const updatedEvent = await eventService.updateEvent(id, updateData, organizacionesArray);
 
     res.status(200).json({
       success: true,

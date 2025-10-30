@@ -360,6 +360,50 @@ const validateEventCreationData = (req, res, next) => {
   next();
 };
 
+// Middleware para validar datos de actualización de evento (campos opcionales, sin exigir PDFs)
+const validateEventUpdateData = (req, res, next) => {
+  const { titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar, organizaciones_externas_ids } = req.body;
+  const errors = [];
+
+  // Validar solo si vienen los campos
+  if (titulo !== undefined && titulo.trim().length < 3) {
+    errors.push('El título debe tener al menos 3 caracteres');
+  }
+  if (descripcion !== undefined && descripcion.trim().length < 3) {
+    errors.push('La descripción debe tener al menos 3 caracteres');
+  }
+  if (tipo !== undefined && !['academico', 'ludico'].includes(tipo)) {
+    errors.push('El tipo debe ser "academico" o "ludico"');
+  }
+  if (lugar !== undefined && lugar.trim().length < 3) {
+    errors.push('El lugar debe tener al menos 3 caracteres');
+  }
+
+  // Validar fechas si vienen y su relación
+  if (fecha_inicio && fecha_fin && new Date(fecha_inicio) >= new Date(fecha_fin)) {
+    errors.push('La fecha de inicio debe ser anterior a la fecha de fin');
+  }
+
+  // Validar organizaciones si vienen
+  let orgIds = organizaciones_externas_ids;
+  if (typeof orgIds === 'string') {
+    orgIds = orgIds.split(',').filter(id => id.trim() !== '');
+  }
+  if (orgIds !== undefined && (!Array.isArray(orgIds) || orgIds.length === 0)) {
+    errors.push('Debe seleccionar al menos una organización externa');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Datos de evento inválidos',
+      errors
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   validateEmail,
   validateInstitutionalEmail,
@@ -371,6 +415,7 @@ module.exports = {
   validateResetPasswordData,
   validateOrganizationData,
   validateEventData,
+  validateEventUpdateData,
   validateEventCreationData
 };
 

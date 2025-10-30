@@ -58,7 +58,12 @@ class EventRepository {
   // Obtener organizaciones asociadas a un evento
   async getEventOrganizations(eventId) {
     const query = `
-      SELECT oe.*, o.nombre, o.representante_legal, o.telefono, o.ubicacion
+      SELECT 
+        o.id AS id,
+        o.nombre,
+        o.representante_legal,
+        o.telefono,
+        o.ubicacion
       FROM organizaciones_eventos oe
       INNER JOIN organizaciones_externas o ON oe.organizacion_externa_id = o.id
       WHERE oe.evento_id = ?

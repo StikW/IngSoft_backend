@@ -77,7 +77,7 @@ class EventService {
   }
 
   // Actualizar evento
-  async updateEvent(eventId, updateData) {
+  async updateEvent(eventId, updateData, organizacionesExIds) {
     // Verificar que el evento existe
     const existingEvent = await eventRepository.findBasicById(eventId);
     
@@ -90,13 +90,16 @@ class EventService {
       throw new Error('Solo se pueden editar eventos en estado "borrador", "enviado" o "rechazado"');
     }
 
-    // Si se reemplazan archivos, eliminar los anteriores
+    // Si se reemplazan archivos, eliminar los anteriores (necesitamos rutas completas)
     try {
-      if (updateData.aval_pdf && existingEvent.aval_pdf && updateData.aval_pdf !== existingEvent.aval_pdf) {
-        await deleteFile(existingEvent.aval_pdf);
-      }
-      if (updateData.acta_comite_pdf && existingEvent.acta_comite_pdf && updateData.acta_comite_pdf !== existingEvent.acta_comite_pdf) {
-        await deleteFile(existingEvent.acta_comite_pdf);
+      const fullBefore = await eventRepository.findById(eventId);
+      if (fullBefore) {
+        if (updateData.aval_pdf && fullBefore.aval_pdf && updateData.aval_pdf !== fullBefore.aval_pdf) {
+          await deleteFile(fullBefore.aval_pdf);
+        }
+        if (updateData.acta_comite_pdf && fullBefore.acta_comite_pdf && updateData.acta_comite_pdf !== fullBefore.acta_comite_pdf) {
+          await deleteFile(fullBefore.acta_comite_pdf);
+        }
       }
     } catch (fileDeleteError) {
       console.error('Error eliminando archivos previos del evento:', fileDeleteError);
@@ -105,6 +108,21 @@ class EventService {
 
     // Actualizar el evento
     await eventRepository.update(eventId, updateData);
+
+    // Si vienen nuevas organizaciones, reemplazar relaciones N:M
+    if (Array.isArray(organizacionesExIds)) {
+      // Verificar que existan
+      for (const orgId of organizacionesExIds) {
+        const exists = await eventRepository.verifyOrganizationExists(orgId);
+        if (!exists) {
+          throw new Error(`Organización externa con ID ${orgId} no encontrada`);
+        }
+      }
+      await eventRepository.removeAllOrganizationsFromEvent(eventId);
+      for (const orgId of organizacionesExIds) {
+        await eventRepository.addOrganizationToEvent(eventId, orgId);
+      }
+    }
 
     // Obtener el evento actualizado
     const updatedEvent = await eventRepository.findById(eventId);

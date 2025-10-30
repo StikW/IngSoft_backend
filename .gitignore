@@ -1,6 +1,9 @@
-# Archivos de upload
-uploads/
-*.pdf
+# Ignorar todo dentro de la carpeta uploads/
+uploads/*.pdf
+
+# Pero NO ignorar la propia carpeta uploads/.gitignore
+!uploads/.gitignore
+
 
 # Node modules
 node_modules/

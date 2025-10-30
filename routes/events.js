@@ -12,7 +12,7 @@ const {
   rejectEvent,
   deleteEvent
 } = require('../controllers/eventController');
-const { validateEventData, validateEventCreationData } = require('../middleware/validation');
+const { validateEventData, validateEventCreationData, validateEventUpdateData } = require('../middleware/validation');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
@@ -44,7 +44,7 @@ router.get('/:id', authenticateToken, getEventById);
 router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), upload.fields([
   { name: 'aval_pdf', maxCount: 1 },
   { name: 'acta_comite_pdf', maxCount: 1 }
-]), validateEventData, updateEvent);
+]), validateEventUpdateData, updateEvent);
 
 // HU1.5 - Envío de evento a validación/aprobación
 // POST /api/events/:id/submit-validation
