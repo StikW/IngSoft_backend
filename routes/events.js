@@ -19,7 +19,6 @@ const upload = require('../middleware/upload');
 // HU1.1 - Registro de evento
 // POST /api/events
 router.post('/', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), upload.fields([
-  { name: 'aval_pdf', maxCount: 1 },
   { name: 'acta_comite_pdf', maxCount: 1 }
 ]), validateEventData, createEvent);
 
@@ -42,7 +41,6 @@ router.get('/:id', authenticateToken, getEventById);
 // HU1.2 - Edición de evento antes de validación
 // PUT /api/events/:id
 router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente', 'secretario', 'administrador']), upload.fields([
-  { name: 'aval_pdf', maxCount: 1 },
   { name: 'acta_comite_pdf', maxCount: 1 }
 ]), validateEventUpdateData, updateEvent);
 

@@ -1,6 +1,7 @@
 const eventRepository = require('../repositories/eventRepository');
 const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
+const lugarService = require('./lugarService');
 const { deleteFile } = require('../utils/fileUtils');
 
 class EventService {
@@ -12,20 +13,38 @@ class EventService {
       tipo,
       fecha_inicio,
       fecha_fin,
-      lugar,
+      lugar_id,
+      capacidad_esperada,
       unidad_academica_id,
       organizaciones_externas_ids,
       responsables,
-      aval_pdf,
       acta_comite_pdf
     } = eventData;
 
-    // Verificar que la unidad académica existe (si se proporciona)
-    if (unidad_academica_id) {
-      const unitExists = await eventRepository.verifyUnitExists(unidad_academica_id);
-      if (!unitExists) {
-        throw new Error('Unidad académica no encontrada');
-      }
+    // Verificar que la unidad académica existe (obligatoria)
+    if (!unidad_academica_id) {
+      throw new Error('La unidad académica es obligatoria');
+    }
+    const unitExists = await eventRepository.verifyUnitExists(unidad_academica_id);
+    if (!unitExists) {
+      throw new Error('Unidad académica no encontrada');
+    }
+
+    // Verificar que el lugar existe
+    if (!lugar_id) {
+      throw new Error('El lugar es obligatorio');
+    }
+    const lugar = await lugarService.getLugarById(lugar_id);
+    if (!lugar) {
+      throw new Error('Lugar no encontrado');
+    }
+
+    // Validar capacidad esperada
+    if (!capacidad_esperada || capacidad_esperada <= 0) {
+      throw new Error('La capacidad esperada debe ser mayor a 0');
+    }
+    if (capacidad_esperada > lugar.capacidad_max) {
+      throw new Error(`La capacidad esperada (${capacidad_esperada}) no puede superar la capacidad máxima del lugar (${lugar.capacidad_max})`);
     }
 
     // Validar que se proporcione al menos una organización externa
@@ -48,10 +67,9 @@ class EventService {
       tipo,
       fecha_inicio,
       fecha_fin,
-      lugar,
+      lugar_id,
+      capacidad_esperada,
       unidad_academica_id,
-      organizador_id: organizadorId,
-      aval_pdf,
       acta_comite_pdf
     });
 
@@ -90,13 +108,26 @@ class EventService {
       throw new Error('Solo se pueden editar eventos en estado "borrador", "enviado" o "rechazado"');
     }
 
-    // Si se reemplazan archivos, eliminar los anteriores (necesitamos rutas completas)
+    // Validar capacidad esperada si se actualiza lugar_id o capacidad_esperada
+    if (updateData.lugar_id || updateData.capacidad_esperada !== undefined) {
+      const lugarId = updateData.lugar_id || existingEvent.lugar_id;
+      const capacidadEsperada = updateData.capacidad_esperada !== undefined ? updateData.capacidad_esperada : existingEvent.capacidad_esperada;
+      
+      if (lugarId && capacidadEsperada) {
+        const lugar = await lugarService.getLugarById(lugarId);
+        if (!lugar) {
+          throw new Error('Lugar no encontrado');
+        }
+        if (capacidadEsperada > lugar.capacidad_max) {
+          throw new Error(`La capacidad esperada (${capacidadEsperada}) no puede superar la capacidad máxima del lugar (${lugar.capacidad_max})`);
+        }
+      }
+    }
+
+    // Si se reemplaza acta_comite_pdf, eliminar el anterior
     try {
       const fullBefore = await eventRepository.findById(eventId);
       if (fullBefore) {
-        if (updateData.aval_pdf && fullBefore.aval_pdf && updateData.aval_pdf !== fullBefore.aval_pdf) {
-          await deleteFile(fullBefore.aval_pdf);
-        }
         if (updateData.acta_comite_pdf && fullBefore.acta_comite_pdf && updateData.acta_comite_pdf !== fullBefore.acta_comite_pdf) {
           await deleteFile(fullBefore.acta_comite_pdf);
         }

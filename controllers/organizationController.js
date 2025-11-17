@@ -6,7 +6,8 @@ const createOrganization = async (req, res) => {
     const { 
       nit,
       nombre, 
-      representante_legal, 
+      representante_legal,
+      representante_asiste,
       telefono, 
       ubicacion, 
       sector_economico, 
@@ -20,6 +21,7 @@ const createOrganization = async (req, res) => {
       nit,
       nombre,
       representante_legal,
+      representante_asiste: representante_asiste === true || representante_asiste === 'true',
       telefono,
       ubicacion,
       sector_economico,
@@ -27,7 +29,7 @@ const createOrganization = async (req, res) => {
       certificado_pdf
     };
 
-    const newOrganization = await organizationService.createOrganization(organizationData);
+    const newOrganization = await organizationService.createOrganization(organizationData, req.user.id);
 
     res.status(201).json({
       success: true,
@@ -102,7 +104,8 @@ const updateOrganization = async (req, res) => {
     const { 
       nit,
       nombre, 
-      representante_legal, 
+      representante_legal,
+      representante_asiste,
       telefono, 
       ubicacion, 
       sector_economico, 
@@ -116,6 +119,7 @@ const updateOrganization = async (req, res) => {
     if (nit !== undefined) updateData.nit = nit;
     if (nombre !== undefined) updateData.nombre = nombre;
     if (representante_legal !== undefined) updateData.representante_legal = representante_legal;
+    if (representante_legal_asiste !== undefined) updateData.representante_legal_asiste = representante_legal_asiste === true || representante_legal_asiste === 'true';
     if (telefono !== undefined) updateData.telefono = telefono;
     if (ubicacion !== undefined) updateData.ubicacion = ubicacion;
     if (sector_economico !== undefined) updateData.sector_economico = sector_economico;

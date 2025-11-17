@@ -7,28 +7,32 @@ class OrganizationRepository {
       nit,
       nombre,
       representante_legal,
+      representante_asiste,
       telefono,
       ubicacion,
       sector_economico,
       actividad_principal,
-      certificado_pdf
+      certificado_pdf,
+      creador_id
     } = organizationData;
 
     const query = `
       INSERT INTO organizaciones_externas 
-      (nit, nombre, representante_legal, telefono, ubicacion, sector_economico, actividad_principal, certificado_pdf, fecha_registro)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      (nit, nombre, representante_legal, representante_asiste, telefono, ubicacion, sector_economico, actividad_principal, certificado_pdf, creador_id, fecha_registro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
 
     const result = await executeQuery(query, [
       nit,
       nombre,
       representante_legal,
+      representante_asiste || false,
       telefono || null,
       ubicacion || null,
       sector_economico || null,
       actividad_principal || null,
-      certificado_pdf || null
+      certificado_pdf || null,
+      creador_id
     ]);
 
     return result.insertId;

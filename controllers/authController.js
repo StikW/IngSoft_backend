@@ -54,20 +54,20 @@ const register = async (req, res) => {
   console.log("🧾 Content-Type:", req.get('Content-Type'));
 
   try {
-    const { nombre, correo, contrasena, telefono, rol_id } = req.body;
-    console.log("📋 Datos extraídos:", { nombre, correo, contrasena, telefono, rol_id });
+    const { nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id } = req.body;
+    console.log("📋 Datos extraídos:", { nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id });
 
-    // Verifica campos requeridos
+    // Verifica campos requeridos básicos
     if (!nombre || !correo || !contrasena || !telefono || !rol_id) {
-      console.log("❌ Faltan datos:", { nombre: !!nombre, correo: !!correo, contrasena: !!contrasena, telefono: !!telefono, rol_id: !!rol_id });
+      console.log("❌ Faltan datos:", { nombre: !!nombre, correo: !!correo, contrasena: !!contrasena, telefono: !!telefono, programa_academico_id: !!programa_academico_id, facultad_id: !!facultad_id, rol_id: !!rol_id });
       return res.status(400).json({
         success: false,
         message: "Faltan datos requeridos",
-        received: { nombre, correo, contrasena, telefono, rol_id }
+        received: { nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id }
       });
     }
 
-    const result = await authService.register({ nombre, correo, contrasena, telefono, rol_id });
+    const result = await authService.register({ nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id });
 
     console.log("✅ Usuario registrado correctamente");
 

@@ -31,8 +31,8 @@ const validateUserData = (req, res, next) => {
     errors.push('Correo inválido');
   }
 
-  if (!contrasena || contrasena.length < 4) {
-    errors.push('La contraseña debe tener al menos 4 caracteres');
+  if (!contrasena || contrasena.length < 8) {
+    errors.push('La contraseña debe tener al menos 8 caracteres');
   }
 
   if (errors.length > 0) {
@@ -113,8 +113,21 @@ const validateEventData = (req, res, next) => {
     errors.push('La fecha de inicio debe ser anterior a la fecha de fin');
   }
 
-  if (!lugar || lugar.trim().length < 3) {
-    errors.push('El lugar debe tener al menos 3 caracteres');
+  // Validar que se proporcione lugar_id
+  if (!req.body.lugar_id) {
+    errors.push('El lugar es obligatorio');
+  }
+
+  // Validar capacidad esperada
+  if (!req.body.capacidad_esperada) {
+    errors.push('La capacidad esperada es obligatoria');
+  } else if (isNaN(req.body.capacidad_esperada) || parseInt(req.body.capacidad_esperada) <= 0) {
+    errors.push('La capacidad esperada debe ser un número mayor a 0');
+  }
+
+  // Validar que se proporcione unidad académica
+  if (!req.body.unidad_academica_id) {
+    errors.push('La unidad académica es obligatoria');
   }
 
   // Validar que se proporcione al menos una organización externa
@@ -129,11 +142,7 @@ const validateEventData = (req, res, next) => {
     errors.push('Debe seleccionar al menos una organización externa');
   }
 
-  // Validar que se proporcionen los documentos PDF obligatorios
-  if (!req.files || !req.files.aval_pdf) {
-    errors.push('El aval PDF es obligatorio');
-  }
-  
+  // Validar que se proporcione el acta de comité PDF obligatorio
   if (!req.files || !req.files.acta_comite_pdf) {
     errors.push('El acta de comité PDF es obligatorio');
   }
@@ -151,7 +160,7 @@ const validateEventData = (req, res, next) => {
 
 // Middleware para validar datos de registro de usuario
 const validateUserRegistrationData = (req, res, next) => {
-  const { correo, contrasena, nombre, telefono, rol_id } = req.body;
+  const { correo, contrasena, nombre, telefono, programa_academico_id, facultad_id, rol_id } = req.body;
   const errors = [];
 
   if (!correo || !validateEmail(correo)) {
@@ -167,8 +176,8 @@ const validateUserRegistrationData = (req, res, next) => {
     });
   }
 
-  if (!contrasena || contrasena.length < 4) {
-    errors.push('La contraseña debe tener al menos 4 caracteres');
+  if (!contrasena || contrasena.length < 8) {
+    errors.push('La contraseña debe tener al menos 8 caracteres');
   }
 
   // Validar que la contraseña no contenga espacios
@@ -179,6 +188,27 @@ const validateUserRegistrationData = (req, res, next) => {
   if (!nombre || nombre.trim().length < 2) {
     errors.push('El nombre debe tener al menos 2 caracteres');
   }
+
+  // Validar según el rol
+  const parsedRolId = parseInt(rol_id);
+  if (parsedRolId === 1) {
+    // Estudiante: programa_academico_id obligatorio, facultad_id no debe venir
+    if (!programa_academico_id) {
+      errors.push('El programa académico es obligatorio para estudiantes');
+    }
+    if (facultad_id) {
+      errors.push('Los estudiantes no pueden tener facultad asignada');
+    }
+  } else if (parsedRolId === 2) {
+    // Docente: facultad_id obligatorio, programa_academico_id no debe venir
+    if (!facultad_id) {
+      errors.push('La facultad es obligatoria para docentes');
+    }
+    if (programa_academico_id) {
+      errors.push('Los docentes no pueden tener programa académico asignado');
+    }
+  }
+  // Para secretarios y administradores, ambos deben ser NULL (no se validan aquí porque no se registran)
 
   if (!telefono || telefono.trim().length === 0) {
     errors.push('El número de teléfono es obligatorio');
@@ -194,7 +224,6 @@ const validateUserRegistrationData = (req, res, next) => {
   }
 
   // Validar que el rol sea válido y NO sea administrador (rol_id = 4) o secretario (rol_id = 3)
-  const parsedRolId = parseInt(rol_id);
   if (!rol_id || ![1, 2].includes(parsedRolId)) {
     errors.push('Rol inválido. Solo se permiten registros para: Estudiante (1) o Docente (2). Los secretarios y administradores están preconfigurados.');
   }
@@ -297,8 +326,8 @@ const validateResetPasswordData = (req, res, next) => {
     errors.push('Token requerido');
   }
 
-  if (!newPassword || newPassword.length < 6) {
-    errors.push('La nueva contraseña debe tener al menos 6 caracteres');
+  if (!newPassword || newPassword.length < 8) {
+    errors.push('La nueva contraseña debe tener al menos 8 caracteres');
   }
 
   if (errors.length > 0) {
@@ -362,7 +391,7 @@ const validateEventCreationData = (req, res, next) => {
 
 // Middleware para validar datos de actualización de evento (campos opcionales, sin exigir PDFs)
 const validateEventUpdateData = (req, res, next) => {
-  const { titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar, organizaciones_externas_ids } = req.body;
+  const { titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar_id, capacidad_esperada, organizaciones_externas_ids } = req.body;
   const errors = [];
 
   // Validar solo si vienen los campos
@@ -375,8 +404,11 @@ const validateEventUpdateData = (req, res, next) => {
   if (tipo !== undefined && !['academico', 'ludico'].includes(tipo)) {
     errors.push('El tipo debe ser "academico" o "ludico"');
   }
-  if (lugar !== undefined && lugar.trim().length < 3) {
-    errors.push('El lugar debe tener al menos 3 caracteres');
+  if (lugar_id !== undefined && !lugar_id) {
+    errors.push('El lugar es obligatorio');
+  }
+  if (capacidad_esperada !== undefined && (isNaN(capacidad_esperada) || parseInt(capacidad_esperada) <= 0)) {
+    errors.push('La capacidad esperada debe ser un número mayor a 0');
   }
 
   // Validar fechas si vienen y su relación

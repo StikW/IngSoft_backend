@@ -9,19 +9,17 @@ class EventRepository {
       tipo,
       fecha_inicio,
       fecha_fin,
-      lugar,
+      lugar_id,
+      capacidad_esperada,
       unidad_academica_id,
-      organizador_id,
-      aval_pdf,
       acta_comite_pdf
     } = eventData;
 
     const query = `
       INSERT INTO eventos 
-      (titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar, estado, 
-       unidad_academica_id, organizador_id, 
-       aval_pdf, acta_comite_pdf, fecha_registro)
-      VALUES (?, ?, ?, ?, ?, ?, 'borrador', ?, ?, ?, ?, NOW())
+      (titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar_id, capacidad_esperada, estado, 
+       unidad_academica_id, acta_comite_pdf, fecha_registro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'borrador', ?, ?, NOW())
     `;
 
     const result = await executeQuery(query, [
@@ -30,10 +28,9 @@ class EventRepository {
       tipo,
       fecha_inicio,
       fecha_fin,
-      lugar,
-      unidad_academica_id || null,
-      organizador_id,
-      aval_pdf || null,
+      lugar_id,
+      capacidad_esperada,
+      unidad_academica_id,
       acta_comite_pdf || null
     ]);
 
@@ -44,11 +41,12 @@ class EventRepository {
   async findById(id) {
     const query = `
       SELECT e.*, 
-             u.nombre as organizador_nombre,
-             ua.nombre as unidad_academica_nombre
+             ua.nombre as unidad_academica_nombre,
+             l.nombre as lugar_nombre,
+             l.capacidad_max
       FROM eventos e
-      LEFT JOIN usuarios u ON e.organizador_id = u.id
       LEFT JOIN unidades_academicas ua ON e.unidad_academica_id = ua.id
+      LEFT JOIN lugares l ON e.lugar_id = l.id
       WHERE e.id = ?
     `;
     const [event] = await executeQuery(query, [id]);
@@ -116,7 +114,7 @@ class EventRepository {
 
   // Buscar evento por ID con información básica
   async findBasicById(id) {
-    const query = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, lugar, organizador_id FROM eventos WHERE id = ?';
+    const query = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, lugar_id, capacidad_esperada FROM eventos WHERE id = ?';
     const [event] = await executeQuery(query, [id]);
     return event;
   }
@@ -172,7 +170,7 @@ class EventRepository {
   async findByStatus(estado) {
     let baseQuery = `
       FROM eventos e
-      LEFT JOIN usuarios u ON e.organizador_id = u.id
+      LEFT JOIN lugares l ON e.lugar_id = l.id
       WHERE 1=1
     `;
     const params = [];
@@ -185,7 +183,8 @@ class EventRepository {
     // Obtener registros
     const dataQuery = `
       SELECT e.*, 
-             u.nombre as organizador_nombre
+             l.nombre as lugar_nombre,
+             l.capacidad_max
       ${baseQuery}
       ORDER BY e.fecha_registro DESC
     `;

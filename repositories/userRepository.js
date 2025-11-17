@@ -10,11 +10,17 @@ class UserRepository {
         u.correo,
         u.contrasena,
         u.telefono,
+        u.programa_academico_id,
+        u.facultad_id,
+        p.nombre as programa_nombre,
+        f.nombre as facultad_nombre,
         u.rol_id,
         r.nombre as rol_nombre,
         u.activo
       FROM usuarios u
       INNER JOIN roles r ON u.rol_id = r.id
+      LEFT JOIN programas_academicos p ON u.programa_academico_id = p.id
+      LEFT JOIN facultades f ON u.facultad_id = f.id
       WHERE u.correo = ? AND u.activo = 1
       LIMIT 1;
     `;
@@ -30,11 +36,17 @@ class UserRepository {
         u.nombre,
         u.correo,
         u.telefono,
+        u.programa_academico_id,
+        u.facultad_id,
+        p.nombre as programa_nombre,
+        f.nombre as facultad_nombre,
         u.rol_id,
         r.nombre as rol_nombre,
         u.activo
       FROM usuarios u
       INNER JOIN roles r ON u.rol_id = r.id
+      LEFT JOIN programas_academicos p ON u.programa_academico_id = p.id
+      LEFT JOIN facultades f ON u.facultad_id = f.id
       WHERE u.id = ?
     `;
     const [user] = await executeQuery(query, [id]);
@@ -50,12 +62,12 @@ class UserRepository {
 
   // Crear nuevo usuario
   async create(userData) {
-    const { nombre, correo, contrasena, telefono, rol_id } = userData;
+    const { nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id } = userData;
     const query = `
-      INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol_id, activo)
-      VALUES (?, ?, ?, ?, ?, 1)
+      INSERT INTO usuarios (nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id, activo)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
     `;
-    const result = await executeQuery(query, [nombre, correo, contrasena, telefono || null, rol_id]);
+    const result = await executeQuery(query, [nombre, correo, contrasena, telefono || null, programa_academico_id || null, facultad_id || null, rol_id]);
     return result.insertId;
   }
 

@@ -13,6 +13,8 @@ const authRoutes = require('./routes/auth');
 const organizationRoutes = require('./routes/organizations');
 const eventRoutes = require('./routes/events');
 const notificationRoutes = require('./routes/notifications');
+const lugarRoutes = require('./routes/lugares');
+const academicRoutes = require('./routes/academic');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +79,8 @@ app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/lugares', lugarRoutes);
+app.use('/api/academic', academicRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {

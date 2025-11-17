@@ -10,12 +10,12 @@ const updateEvent = async (req, res) => {
       descripcion, 
       fecha_inicio, 
       fecha_fin, 
-      lugar, 
+      lugar_id,
+      capacidad_esperada,
       unidad_academica_id
     } = req.body;
 
     // Obtener archivos subidos
-    const aval_pdf = req.files && req.files.aval_pdf ? `/uploads/${req.files.aval_pdf[0].filename}` : undefined;
     const acta_comite_pdf = req.files && req.files.acta_comite_pdf ? `/uploads/${req.files.acta_comite_pdf[0].filename}` : undefined;
 
     const updateData = {};
@@ -23,9 +23,9 @@ const updateEvent = async (req, res) => {
     if (descripcion !== undefined) updateData.descripcion = descripcion;
     if (fecha_inicio !== undefined) updateData.fecha_inicio = fecha_inicio;
     if (fecha_fin !== undefined) updateData.fecha_fin = fecha_fin;
-    if (lugar !== undefined) updateData.lugar = lugar;
-    if (unidad_academica_id !== undefined) updateData.unidad_academica_id = unidad_academica_id;
-    if (aval_pdf !== undefined) updateData.aval_pdf = aval_pdf;
+    if (lugar_id !== undefined) updateData.lugar_id = parseInt(lugar_id);
+    if (capacidad_esperada !== undefined) updateData.capacidad_esperada = parseInt(capacidad_esperada);
+    if (unidad_academica_id !== undefined) updateData.unidad_academica_id = parseInt(unidad_academica_id);
     if (acta_comite_pdf !== undefined) updateData.acta_comite_pdf = acta_comite_pdf;
 
     // Manejar organizaciones_externas_ids que puede venir como array, string separado por comas, o string único
@@ -153,14 +153,14 @@ const createEvent = async (req, res) => {
       tipo,
       fecha_inicio, 
       fecha_fin, 
-      lugar,
+      lugar_id,
+      capacidad_esperada,
       unidad_academica_id,
       organizaciones_externas_ids,
       responsables
     } = req.body;
 
     // Obtener archivos subidos
-    const aval_pdf = req.files && req.files.aval_pdf ? `/uploads/${req.files.aval_pdf[0].filename}` : null;
     const acta_comite_pdf = req.files && req.files.acta_comite_pdf ? `/uploads/${req.files.acta_comite_pdf[0].filename}` : null;
 
     const organizador_id = req.user.id;
@@ -186,11 +186,11 @@ const createEvent = async (req, res) => {
       tipo,
       fecha_inicio,
       fecha_fin,
-      lugar,
-      unidad_academica_id,
+      lugar_id: parseInt(lugar_id),
+      capacidad_esperada: parseInt(capacidad_esperada),
+      unidad_academica_id: parseInt(unidad_academica_id),
       organizaciones_externas_ids: organizacionesArray,
       responsables,
-      aval_pdf,
       acta_comite_pdf
     };
 

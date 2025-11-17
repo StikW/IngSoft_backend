@@ -3,11 +3,12 @@ const { deleteFile } = require('../utils/fileUtils');
 
 class OrganizationService {
   // Crear nueva organización
-  async createOrganization(organizationData) {
+  async createOrganization(organizationData, creadorId) {
     const {
       nit,
       nombre,
       representante_legal,
+      representante_asiste,
       telefono,
       ubicacion,
       sector_economico,
@@ -32,11 +33,13 @@ class OrganizationService {
       nit,
       nombre,
       representante_legal,
+      representante_asiste,
       telefono,
       ubicacion,
       sector_economico,
       actividad_principal,
-      certificado_pdf
+      certificado_pdf,
+      creador_id: creadorId
     });
 
     // Obtener la organización creada

@@ -36,6 +36,10 @@ class AuthService {
         nombre: user.nombre,
         correo: user.correo,
         telefono: user.telefono,
+        programa_academico_id: user.programa_academico_id,
+        programa_nombre: user.programa_nombre,
+        facultad_id: user.facultad_id,
+        facultad_nombre: user.facultad_nombre,
         rol: user.rol_nombre,
         rol_id: user.rol_id,
       }
@@ -44,7 +48,7 @@ class AuthService {
 
   // Registrar nuevo usuario
   async register(userData) {
-    const { nombre, correo, contrasena, telefono, rol_id } = userData;
+    const { nombre, correo, contrasena, telefono, programa_academico_id, facultad_id, rol_id } = userData;
 
     // Validar dominio institucional
     const institutionalDomain = '@uao.edu.co';
@@ -68,6 +72,25 @@ class AuthService {
       throw new Error('Rol inválido. Solo se permiten registros para usuarios institucionales (Estudiante, Docente)');
     }
 
+    // Validaciones según el rol
+    if (parsedRolId === 1) {
+      // Estudiante: programa_academico_id obligatorio, facultad_id debe ser NULL
+      if (!programa_academico_id) {
+        throw new Error('El programa académico es obligatorio para estudiantes');
+      }
+      if (facultad_id) {
+        throw new Error('Los estudiantes no pueden tener facultad asignada');
+      }
+    } else if (parsedRolId === 2) {
+      // Docente: facultad_id obligatorio, programa_academico_id debe ser NULL
+      if (!facultad_id) {
+        throw new Error('La facultad es obligatoria para docentes');
+      }
+      if (programa_academico_id) {
+        throw new Error('Los docentes no pueden tener programa académico asignado');
+      }
+    }
+
     // Verificar si el correo ya existe
     const emailExists = await userRepository.existsByEmail(correo);
     if (emailExists) {
@@ -83,6 +106,8 @@ class AuthService {
       correo,
       contrasena: hashedPassword,
       telefono,
+      programa_academico_id: programa_academico_id ? parseInt(programa_academico_id) : null,
+      facultad_id: facultad_id ? parseInt(facultad_id) : null,
       rol_id
     });
 
@@ -91,6 +116,8 @@ class AuthService {
       nombre,
       correo,
       telefono,
+      programa_academico_id: programa_academico_id ? parseInt(programa_academico_id) : null,
+      facultad_id: facultad_id ? parseInt(facultad_id) : null,
       rol_id,
     };
   }
@@ -121,8 +148,8 @@ class AuthService {
     // Si se proporciona una nueva contraseña, actualizarla
     if (nuevaContrasena) {
       // Validar nueva contraseña
-      if (nuevaContrasena.length < 4) {
-        throw new Error('La contraseña debe tener al menos 4 caracteres');
+      if (nuevaContrasena.length < 8) {
+        throw new Error('La contraseña debe tener al menos 8 caracteres');
       }
 
       if (nuevaContrasena.includes(' ')) {
