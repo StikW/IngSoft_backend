@@ -145,6 +145,15 @@ const startServer = async () => {
       process.exit(1);
     }
 
+    // Verificar conexión con el servidor de email (si está configurado)
+    if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+      const emailService = require('./services/emailService');
+      await emailService.verifyConnection();
+    } else {
+      console.log('⚠️ Servidor de email no configurado. Los emails no se enviarán.');
+      console.log('   Configura SMTP_USER y SMTP_PASSWORD en el archivo .env para habilitar el envío de emails.');
+    }
+
     // Iniciar servidor
     app.listen(PORT, () => {
       console.log(`🚀 Servidor SIGEU Backend ejecutándose en puerto ${PORT}`);

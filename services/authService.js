@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const userRepository = require('../repositories/userRepository');
+const emailService = require('./emailService');
 
 class AuthService {
   // Autenticar usuario
@@ -111,14 +112,34 @@ class AuthService {
       rol_id
     });
 
+    // Obtener el usuario creado con información completa
+    const newUser = await userRepository.findById(userId);
+    
+    // Enviar email de confirmación de registro
+    try {
+      await emailService.sendRegistrationConfirmation({
+        nombre: newUser.nombre,
+        correo: newUser.correo,
+        rol: parsedRolId === 1 ? 'Estudiante' : 'Docente'
+      });
+      console.log('✅ Email de confirmación de registro enviado a:', newUser.correo);
+    } catch (emailError) {
+      // No fallar el registro si el email falla, solo loguear el error
+      console.error('⚠️ Error enviando email de confirmación (registro continuó exitosamente):', emailError);
+    }
+    
     return {
-      id: userId,
-      nombre,
-      correo,
-      telefono,
-      programa_id: programa_academico_id ? parseInt(programa_academico_id) : null,
-      facultad_id: facultad_id ? parseInt(facultad_id) : null,
-      rol_id,
+      user: {
+        id: newUser.id,
+        nombre: newUser.nombre,
+        correo: newUser.correo,
+        telefono: newUser.telefono,
+        rol_id: newUser.rol_id,
+        programa_id: newUser.programa_id,
+        programa_nombre: newUser.programa_nombre,
+        facultad_id: newUser.facultad_id,
+        facultad_nombre: newUser.facultad_nombre
+      }
     };
   }
 
@@ -171,7 +192,66 @@ class AuthService {
     return updatedUser;
   }
 
-  // Generar token de recuperación de contraseña
+  // Recuperar credenciales (generar contraseña temporal y enviar por email)
+  async recoverCredentials(email) {
+    // Buscar usuario por email
+    const user = await userRepository.findByEmail(email);
+    
+    if (!user) {
+      // Por seguridad, no revelar si el email existe o no
+      return null;
+    }
+
+    // Generar contraseña temporal aleatoria (12 caracteres)
+    const generateTemporaryPassword = () => {
+      const length = 12;
+      const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
+      let password = '';
+      for (let i = 0; i < length; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+      }
+      return password;
+    };
+
+    const temporaryPassword = generateTemporaryPassword();
+
+    // Encriptar la nueva contraseña temporal
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    // Actualizar la contraseña en la base de datos
+    await userRepository.updatePassword(user.id, hashedPassword);
+
+    // Obtener información del rol para el email
+    const rolNames = {
+      1: 'Estudiante',
+      2: 'Docente',
+      3: 'Secretario',
+      4: 'Administrador'
+    };
+
+    // Enviar email con las credenciales
+    try {
+      await emailService.sendCredentialsRecovery({
+        nombre: user.nombre,
+        correo: user.correo,
+        rol: rolNames[user.rol_id] || 'Usuario'
+      }, temporaryPassword);
+      console.log('✅ Email de recuperación de credenciales enviado a:', user.correo);
+    } catch (emailError) {
+      console.error('❌ Error enviando email de recuperación:', emailError);
+      throw new Error('Error al enviar email de recuperación de credenciales');
+    }
+
+    return {
+      user: {
+        id: user.id,
+        correo: user.correo,
+        nombre: user.nombre
+      }
+    };
+  }
+
+  // Generar token de recuperación de contraseña (método anterior, mantenido por compatibilidad)
   async generatePasswordResetToken(email) {
     // Buscar usuario por email
     const user = await userRepository.findByEmail(email);

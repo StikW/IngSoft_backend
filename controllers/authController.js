@@ -144,27 +144,26 @@ const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const result = await authService.generatePasswordResetToken(email);
+    // Usar el nuevo método de recuperación de credenciales
+    const result = await authService.recoverCredentials(email);
 
     // Por seguridad, siempre devolver éxito aunque el email no exista
     const response = {
       success: true,
-      message: 'Si el email existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña'
+      message: 'Si el email existe en nuestro sistema, recibirás un correo con tus credenciales de acceso'
     };
 
-    // En desarrollo, incluir el token para testing
-    if (process.env.NODE_ENV === 'development' && result) {
-      response.resetToken = result.token;
-      console.log(`🔗 Enlace de recuperación para ${result.user.correo}: ${result.token}`);
+    if (result) {
+      console.log(`✅ Credenciales enviadas por email a: ${result.user.correo}`);
     }
 
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('Error en recuperación de contraseña:', error);
+    console.error('Error en recuperación de credenciales:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: error.message || 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
