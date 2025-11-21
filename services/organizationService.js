@@ -9,12 +9,44 @@ class OrganizationService {
       nombre,
       representante_legal,
       representante_asiste,
+      representante_alterno_nombre,
+      representante_alterno_contacto,
       telefono,
       ubicacion,
       sector_economico,
       actividad_principal,
       certificado_pdf
     } = organizationData;
+
+    // Validar que si representante_asiste es false, se proporcione representante alterno
+    // Parsear correctamente el valor que puede venir como boolean, string "true"/"false", o número
+    const representanteAsiste = representante_asiste === true || 
+                                representante_asiste === 'true' || 
+                                representante_asiste === 1 || 
+                                representante_asiste === '1';
+    
+    console.log('🔍 Validando representante:', {
+      representante_asiste,
+      tipo: typeof representante_asiste,
+      representanteAsiste,
+      nombreAlterno: representante_alterno_nombre,
+      contactoAlterno: representante_alterno_contacto
+    });
+    
+    if (!representanteAsiste) {
+      // Verificar que los campos del representante alterno no estén vacíos o sean null/undefined
+      const nombreAlterno = representante_alterno_nombre ? String(representante_alterno_nombre).trim() : '';
+      const contactoAlterno = representante_alterno_contacto ? String(representante_alterno_contacto).trim() : '';
+      
+      console.log('🔍 Campos alternos procesados:', { nombreAlterno, contactoAlterno });
+      
+      if (!nombreAlterno || nombreAlterno === '') {
+        throw new Error('Si el representante legal no asiste, debe proporcionar el nombre del representante alterno');
+      }
+      if (!contactoAlterno || contactoAlterno === '') {
+        throw new Error('Si el representante legal no asiste, debe proporcionar el contacto del representante alterno');
+      }
+    }
 
     // Verificar si ya existe una organización con el mismo nombre
     const nameExists = await organizationRepository.existsByName(nombre);
@@ -33,7 +65,9 @@ class OrganizationService {
       nit,
       nombre,
       representante_legal,
-      representante_asiste,
+      representante_asiste: representanteAsiste,
+      representante_alterno_nombre: representanteAsiste ? null : representante_alterno_nombre,
+      representante_alterno_contacto: representanteAsiste ? null : representante_alterno_contacto,
       telefono,
       ubicacion,
       sector_economico,

@@ -36,7 +36,7 @@ class AuthService {
         nombre: user.nombre,
         correo: user.correo,
         telefono: user.telefono,
-        programa_academico_id: user.programa_academico_id,
+        programa_id: user.programa_id,
         programa_nombre: user.programa_nombre,
         facultad_id: user.facultad_id,
         facultad_nombre: user.facultad_nombre,
@@ -100,13 +100,13 @@ class AuthService {
     // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(contrasena, 10);
 
-    // Crear el usuario
+    // Crear el usuario (convertir programa_academico_id del request a programa_id para la BD)
     const userId = await userRepository.create({
       nombre,
       correo,
       contrasena: hashedPassword,
       telefono,
-      programa_academico_id: programa_academico_id ? parseInt(programa_academico_id) : null,
+      programa_id: programa_academico_id ? parseInt(programa_academico_id) : null,
       facultad_id: facultad_id ? parseInt(facultad_id) : null,
       rol_id
     });
@@ -116,7 +116,7 @@ class AuthService {
       nombre,
       correo,
       telefono,
-      programa_academico_id: programa_academico_id ? parseInt(programa_academico_id) : null,
+      programa_id: programa_academico_id ? parseInt(programa_academico_id) : null,
       facultad_id: facultad_id ? parseInt(facultad_id) : null,
       rol_id,
     };

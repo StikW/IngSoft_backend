@@ -14,7 +14,8 @@ const upload = require('../middleware/upload');
 
 // HU2.1 - Registro de organización externa
 // POST /api/organizations
-router.post('/', authenticateToken, requireRole(['administrador', 'secretario']), upload.single('certificado_pdf'), validateOrganizationData, createOrganization);
+// Solo organizadores (estudiantes y docentes) pueden crear organizaciones externas
+router.post('/', authenticateToken, requireRole(['estudiante', 'docente']), upload.single('certificado_pdf'), validateOrganizationData, createOrganization);
 
 // HU2.2 - Búsqueda de organización externa (con filtro por nombre)
 // GET /api/organizations/search
@@ -30,10 +31,12 @@ router.get('/:id', authenticateToken, getOrganizationById);
 
 // HU2.4 - Edición de organización externa
 // PUT /api/organizations/:id
-router.put('/:id', authenticateToken, requireRole(['administrador', 'secretario']), upload.single('certificado_pdf'), validateOrganizationData, updateOrganization);
+// Solo organizadores (estudiantes y docentes) pueden editar organizaciones externas
+router.put('/:id', authenticateToken, requireRole(['estudiante', 'docente']), upload.single('certificado_pdf'), validateOrganizationData, updateOrganization);
 
 // HU2.5 - Eliminación de organización externa
 // DELETE /api/organizations/:id
-router.delete('/:id', authenticateToken, requireRole(['administrador', 'secretario']), deleteOrganization);
+// Solo organizadores (estudiantes y docentes) pueden eliminar organizaciones externas
+router.delete('/:id', authenticateToken, requireRole(['estudiante', 'docente']), deleteOrganization);
 
 module.exports = router;

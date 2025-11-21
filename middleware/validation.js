@@ -86,7 +86,7 @@ const validateOrganizationData = (req, res, next) => {
 
 // Middleware para validar datos de evento
 const validateEventData = (req, res, next) => {
-  const { titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar } = req.body;
+  const { titulo, descripcion, tipo, fecha, hora_inicio, hora_fin } = req.body;
   const errors = [];
 
   if (!titulo || titulo.trim().length < 3) {
@@ -101,16 +101,20 @@ const validateEventData = (req, res, next) => {
     errors.push('El tipo debe ser "academico" o "ludico"');
   }
 
-  if (!fecha_inicio) {
-    errors.push('La fecha de inicio es requerida');
+  if (!fecha) {
+    errors.push('La fecha es requerida');
   }
 
-  if (!fecha_fin) {
-    errors.push('La fecha de fin es requerida');
+  if (!hora_inicio) {
+    errors.push('La hora de inicio es requerida');
   }
 
-  if (fecha_inicio && fecha_fin && new Date(fecha_inicio) >= new Date(fecha_fin)) {
-    errors.push('La fecha de inicio debe ser anterior a la fecha de fin');
+  if (!hora_fin) {
+    errors.push('La hora de fin es requerida');
+  }
+
+  if (hora_inicio && hora_fin && hora_inicio >= hora_fin) {
+    errors.push('La hora de inicio debe ser anterior a la hora de fin');
   }
 
   // Validar que se proporcione lugar_id
@@ -125,9 +129,16 @@ const validateEventData = (req, res, next) => {
     errors.push('La capacidad esperada debe ser un número mayor a 0');
   }
 
-  // Validar que se proporcione unidad académica
-  if (!req.body.unidad_academica_id) {
-    errors.push('La unidad académica es obligatoria');
+  // Validar que se proporcione al menos una unidad académica
+  let unidades_academicas_ids = req.body.unidades_academicas_ids;
+  
+  // Si viene como string separado por comas, convertirlo a array
+  if (typeof unidades_academicas_ids === 'string') {
+    unidades_academicas_ids = unidades_academicas_ids.split(',').filter(id => id.trim() !== '');
+  }
+  
+  if (!unidades_academicas_ids || !Array.isArray(unidades_academicas_ids) || unidades_academicas_ids.length === 0) {
+    errors.push('Debe seleccionar al menos una unidad académica');
   }
 
   // Validar que se proporcione al menos una organización externa
@@ -143,7 +154,19 @@ const validateEventData = (req, res, next) => {
   }
 
   // Validar que se proporcione el acta de comité PDF obligatorio
-  if (!req.files || !req.files.acta_comite_pdf) {
+  // Con upload.any(), req.files es un array, con upload.fields() es un objeto
+  let actaComiteExists = false;
+  if (req.files) {
+    if (Array.isArray(req.files)) {
+      // Formato upload.any()
+      actaComiteExists = req.files.some(file => file.fieldname === 'acta_comite_pdf');
+    } else if (req.files.acta_comite_pdf) {
+      // Formato upload.fields()
+      actaComiteExists = true;
+    }
+  }
+  
+  if (!actaComiteExists) {
     errors.push('El acta de comité PDF es obligatorio');
   }
 
@@ -391,7 +414,7 @@ const validateEventCreationData = (req, res, next) => {
 
 // Middleware para validar datos de actualización de evento (campos opcionales, sin exigir PDFs)
 const validateEventUpdateData = (req, res, next) => {
-  const { titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar_id, capacidad_esperada, organizaciones_externas_ids } = req.body;
+  const { titulo, descripcion, tipo, fecha, hora_inicio, hora_fin, lugar_id, capacidad_esperada, organizaciones_externas_ids } = req.body;
   const errors = [];
 
   // Validar solo si vienen los campos
@@ -411,9 +434,9 @@ const validateEventUpdateData = (req, res, next) => {
     errors.push('La capacidad esperada debe ser un número mayor a 0');
   }
 
-  // Validar fechas si vienen y su relación
-  if (fecha_inicio && fecha_fin && new Date(fecha_inicio) >= new Date(fecha_fin)) {
-    errors.push('La fecha de inicio debe ser anterior a la fecha de fin');
+  // Validar horas si vienen y su relación
+  if (hora_inicio && hora_fin && hora_inicio >= hora_fin) {
+    errors.push('La hora de inicio debe ser anterior a la hora de fin');
   }
 
   // Validar organizaciones si vienen

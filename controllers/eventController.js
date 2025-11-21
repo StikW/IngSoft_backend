@@ -5,6 +5,7 @@ const eventRepository = require('../repositories/eventRepository');
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     const { 
       titulo, 
       descripcion, 
@@ -15,8 +16,36 @@ const updateEvent = async (req, res) => {
       unidad_academica_id
     } = req.body;
 
+    // Verificar que el evento existe
+    const existingEvent = await eventRepository.findBasicById(id);
+    if (!existingEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Evento no encontrado'
+      });
+    }
+
+    // Verificar que el usuario es el creador del evento
+    const creator = await eventRepository.getEventCreator(id);
+    if (!creator || creator.usuario_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para editar este evento. Solo el creador puede editarlo.'
+      });
+    }
+
     // Obtener archivos subidos
-    const acta_comite_pdf = req.files && req.files.acta_comite_pdf ? `/uploads/${req.files.acta_comite_pdf[0].filename}` : undefined;
+    // Con upload.any(), req.files es un array
+    let acta_comite_pdf = undefined;
+    if (req.files && Array.isArray(req.files)) {
+      const actaFile = req.files.find(file => file.fieldname === 'acta_comite_pdf');
+      if (actaFile) {
+        acta_comite_pdf = `/uploads/${actaFile.filename}`;
+      }
+    } else if (req.files && req.files.acta_comite_pdf) {
+      // Formato anterior (upload.fields)
+      acta_comite_pdf = `/uploads/${req.files.acta_comite_pdf[0].filename}`;
+    }
 
     const updateData = {};
     if (titulo !== undefined) updateData.titulo = titulo;
@@ -45,7 +74,7 @@ const updateEvent = async (req, res) => {
       }
     }
 
-    const updatedEvent = await eventService.updateEvent(id, updateData, organizacionesArray);
+    const updatedEvent = await eventService.updateEvent(id, updateData, { organizaciones_externas_ids: organizacionesArray }, userId);
 
     res.status(200).json({
       success: true,
@@ -151,50 +180,154 @@ const createEvent = async (req, res) => {
       titulo, 
       descripcion, 
       tipo,
-      fecha_inicio, 
-      fecha_fin, 
+      fecha, 
+      hora_inicio, 
+      hora_fin, 
       lugar_id,
       capacidad_esperada,
-      unidad_academica_id,
+      unidades_academicas_ids,
+      organizadores_ids,
       organizaciones_externas_ids,
-      responsables
+      responsables,
+      avales
     } = req.body;
 
     // Obtener archivos subidos
-    const acta_comite_pdf = req.files && req.files.acta_comite_pdf ? `/uploads/${req.files.acta_comite_pdf[0].filename}` : null;
+    // Con upload.any(), req.files es un array
+    let acta_comite_pdf = null;
+    const filesMap = {};
+    
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach(file => {
+        if (file.fieldname === 'acta_comite_pdf') {
+          acta_comite_pdf = `/uploads/${file.filename}`;
+        } else if (file.fieldname.startsWith('aval_') && file.fieldname.endsWith('_pdf')) {
+          filesMap[file.fieldname] = file;
+        }
+      });
+    } else if (req.files && req.files.acta_comite_pdf) {
+      // Formato anterior (upload.fields)
+      acta_comite_pdf = `/uploads/${req.files.acta_comite_pdf[0].filename}`;
+    }
 
-    const organizador_id = req.user.id;
+    const creador_id = req.user.id;
+
+    // Manejar unidades_academicas_ids que puede venir como array, string separado por comas, o string único
+    let unidadesArray = [];
+    if (unidades_academicas_ids) {
+      if (Array.isArray(unidades_academicas_ids)) {
+        unidadesArray = unidades_academicas_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+      } else if (typeof unidades_academicas_ids === 'string') {
+        if (unidades_academicas_ids.includes(',')) {
+          unidadesArray = unidades_academicas_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        } else {
+          const parsed = parseInt(unidades_academicas_ids);
+          if (!isNaN(parsed)) unidadesArray = [parsed];
+        }
+      }
+    }
+
+    // Manejar organizadores_ids (el creador se agrega automáticamente en el servicio)
+    let organizadoresArray = [];
+    if (organizadores_ids) {
+      if (Array.isArray(organizadores_ids)) {
+        organizadoresArray = organizadores_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+      } else if (typeof organizadores_ids === 'string') {
+        if (organizadores_ids.includes(',')) {
+          organizadoresArray = organizadores_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        } else {
+          const parsed = parseInt(organizadores_ids);
+          if (!isNaN(parsed)) organizadoresArray = [parsed];
+        }
+      }
+    }
 
     // Manejar organizaciones_externas_ids que puede venir como array, string separado por comas, o string único
     let organizacionesArray = [];
     if (organizaciones_externas_ids) {
       if (Array.isArray(organizaciones_externas_ids)) {
-        organizacionesArray = organizaciones_externas_ids;
+        organizacionesArray = organizaciones_externas_ids.map(id => parseInt(id)).filter(id => !isNaN(id));
       } else if (typeof organizaciones_externas_ids === 'string') {
-        // Si viene como string separado por comas
         if (organizaciones_externas_ids.includes(',')) {
           organizacionesArray = organizaciones_externas_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
         } else {
-          organizacionesArray = [parseInt(organizaciones_externas_ids)];
+          const parsed = parseInt(organizaciones_externas_ids);
+          if (!isNaN(parsed)) organizacionesArray = [parsed];
         }
       }
+    }
+
+    // Manejar responsables (puede venir como JSON string o array)
+    let responsablesArray = [];
+    if (responsables) {
+      if (typeof responsables === 'string') {
+        try {
+          responsablesArray = JSON.parse(responsables);
+        } catch (e) {
+          console.error('Error parseando responsables:', e);
+        }
+      } else if (Array.isArray(responsables)) {
+        responsablesArray = responsables;
+      }
+    }
+
+    // Manejar avales desde req.files y req.body
+    let avalesArray = [];
+    if (req.files && Array.isArray(req.files)) {
+      // Buscar archivos que empiecen con 'aval_' y terminen en '_pdf'
+      req.files.forEach(file => {
+        if (file.fieldname.startsWith('aval_') && file.fieldname.endsWith('_pdf')) {
+          const index = file.fieldname.replace('aval_', '').replace('_pdf', '');
+          const programaId = req.body[`aval_${index}_programa_id`] ? parseInt(req.body[`aval_${index}_programa_id`]) : null;
+          const unidadId = req.body[`aval_${index}_unidad_id`] ? parseInt(req.body[`aval_${index}_unidad_id`]) : null;
+          
+          if (file) {
+            avalesArray.push({
+              programa_id: programaId,
+              unidad_academica_id: unidadId,
+              archivo_pdf: `/uploads/${file.filename}`
+            });
+          }
+        }
+      });
+    } else if (req.files && typeof req.files === 'object') {
+      // Formato anterior (upload.fields)
+      Object.keys(req.files).forEach(key => {
+        if (key.startsWith('aval_') && key.endsWith('_pdf')) {
+          const index = key.replace('aval_', '').replace('_pdf', '');
+          const programaId = req.body[`aval_${index}_programa_id`] ? parseInt(req.body[`aval_${index}_programa_id`]) : null;
+          const unidadId = req.body[`aval_${index}_unidad_id`] ? parseInt(req.body[`aval_${index}_unidad_id`]) : null;
+          const archivo = req.files[key][0];
+          
+          if (archivo) {
+            avalesArray.push({
+              programa_id: programaId,
+              unidad_academica_id: unidadId,
+              archivo_pdf: `/uploads/${archivo.filename}`
+            });
+          }
+        }
+      });
     }
 
     const eventData = {
       titulo,
       descripcion,
       tipo,
-      fecha_inicio,
-      fecha_fin,
+      fecha,
+      hora_inicio,
+      hora_fin,
       lugar_id: parseInt(lugar_id),
       capacidad_esperada: parseInt(capacidad_esperada),
-      unidad_academica_id: parseInt(unidad_academica_id),
+      unidades_academicas_ids: unidadesArray,
+      organizadores_ids: organizadoresArray,
       organizaciones_externas_ids: organizacionesArray,
-      responsables,
+      responsables: responsablesArray,
+      avales: avalesArray,
       acta_comite_pdf
     };
 
-    const newEvent = await eventService.createEvent(eventData, organizador_id);
+    const newEvent = await eventService.createEvent(eventData, creador_id);
 
     res.status(201).json({
       success: true,
@@ -229,6 +362,37 @@ const getAllAcademicUnits = async (req, res) => {
 
   } catch (error) {
     console.error('Error obteniendo unidades académicas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Obtener usuarios por rol (para seleccionar responsables)
+const getUsersByRole = async (req, res) => {
+  try {
+    const { rol_id } = req.query; // 1 = estudiante, 2 = docente
+    
+    if (!rol_id || (rol_id !== '1' && rol_id !== '2')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe proporcionar rol_id válido (1 para estudiantes, 2 para docentes)'
+      });
+    }
+
+    const users = await eventService.getUsersByRole(parseInt(rol_id));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo usuarios por rol:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -333,7 +497,7 @@ const deleteEvent = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // Verificar que el evento existe y pertenece al usuario
+    // Verificar que el evento existe
     const existingEvent = await eventRepository.findBasicById(id);
     if (!existingEvent) {
       return res.status(404).json({
@@ -342,11 +506,6 @@ const deleteEvent = async (req, res) => {
       });
     }
 
-    // Verificar permisos para eliminar el evento
-    const userRole = req.user.rol_id;
-    const isSecretarioOrAdmin = userRole === 3 || userRole === 4; // secretario o administrador
-    const isEventOrganizer = existingEvent.organizador_id === userId;
-    
     // Solo se pueden eliminar eventos en estado 'borrador'
     if (existingEvent.estado !== 'borrador') {
       return res.status(400).json({
@@ -354,13 +513,13 @@ const deleteEvent = async (req, res) => {
         message: 'Solo se pueden eliminar eventos en estado borrador'
       });
     }
-    
-    // Verificar permisos: secretarios/administradores pueden eliminar cualquier evento en borrador,
-    // organizadores solo pueden eliminar sus propios eventos en borrador
-    if (!isSecretarioOrAdmin && !isEventOrganizer) {
+
+    // Verificar que el usuario es el creador del evento
+    const creator = await eventRepository.getEventCreator(id);
+    if (!creator || creator.usuario_id !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'No tienes permisos para eliminar este evento'
+        message: 'No tienes permisos para eliminar este evento. Solo el creador puede eliminarlo.'
       });
     }
 
@@ -388,6 +547,7 @@ module.exports = {
   getEventById,
   getEventsByStatus,
   getAllAcademicUnits,
+  getUsersByRole,
   getMyEvents,
   approveEvent,
   rejectEvent,

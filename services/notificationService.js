@@ -14,13 +14,16 @@ class NotificationService {
       throw new Error('Todos los campos son obligatorios para crear una notificación');
     }
 
-    const notification = await notificationRepository.create({
+    console.log('📝 Creando notificación:', { usuario_id, titulo, mensaje: mensaje.substring(0, 50) + '...' });
+    
+    const notificationId = await notificationRepository.create({
       usuario_id,
       titulo,
       mensaje
     });
 
-    return notification;
+    console.log('✅ Notificación creada con ID:', notificationId);
+    return notificationId;
   }
 
   // Crear notificación para todos los secretarios cuando se envía un evento a validación

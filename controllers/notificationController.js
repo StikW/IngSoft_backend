@@ -35,7 +35,8 @@ const markNotificationAsRead = async (req, res) => {
     const userId = req.user.id;
 
     // Verificar que la notificación pertenece al usuario
-    const notifications = await notificationService.getUserNotifications(userId, 1, 1000);
+    // Obtener todas las notificaciones del usuario para verificar propiedad
+    const notifications = await notificationService.getUserNotifications(userId, false);
     const notification = notifications.notifications.find(n => n.id == id);
     
     if (!notification) {

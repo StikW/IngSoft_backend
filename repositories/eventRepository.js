@@ -7,30 +7,30 @@ class EventRepository {
       titulo,
       descripcion,
       tipo,
-      fecha_inicio,
-      fecha_fin,
+      fecha,
+      hora_inicio,
+      hora_fin,
       lugar_id,
       capacidad_esperada,
-      unidad_academica_id,
       acta_comite_pdf
     } = eventData;
 
     const query = `
       INSERT INTO eventos 
-      (titulo, descripcion, tipo, fecha_inicio, fecha_fin, lugar_id, capacidad_esperada, estado, 
-       unidad_academica_id, acta_comite_pdf, fecha_registro)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'borrador', ?, ?, NOW())
+      (titulo, descripcion, tipo, fecha, hora_inicio, hora_fin, lugar_id, capacidad_esperada, estado, 
+       acta_comite_pdf, fecha_registro)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'borrador', ?, NOW())
     `;
 
     const result = await executeQuery(query, [
       titulo,
       descripcion,
       tipo,
-      fecha_inicio,
-      fecha_fin,
+      fecha,
+      hora_inicio,
+      hora_fin,
       lugar_id,
       capacidad_esperada,
-      unidad_academica_id,
       acta_comite_pdf || null
     ]);
 
@@ -41,11 +41,14 @@ class EventRepository {
   async findById(id) {
     const query = `
       SELECT e.*, 
-             ua.nombre as unidad_academica_nombre,
              l.nombre as lugar_nombre,
-             l.capacidad_max
+             l.capacidad_max,
+             (SELECT eo2.usuario_id 
+              FROM eventos_organizadores eo2 
+              WHERE eo2.evento_id = e.id 
+              ORDER BY eo2.id ASC 
+              LIMIT 1) as creador_id
       FROM eventos e
-      LEFT JOIN unidades_academicas ua ON e.unidad_academica_id = ua.id
       LEFT JOIN lugares l ON e.lugar_id = l.id
       WHERE e.id = ?
     `;
@@ -73,9 +76,10 @@ class EventRepository {
   // Obtener responsables asociados a un evento
   async getEventResponsibles(eventId) {
     const query = `
-      SELECT re.*, u.nombre, u.correo
+      SELECT re.*, u.nombre, u.correo, ua.nombre as unidad_academica_nombre
       FROM responsables_eventos re
       INNER JOIN usuarios u ON re.usuario_id = u.id
+      LEFT JOIN unidades_academicas ua ON re.unidad_academica_id = ua.id
       WHERE re.evento_id = ?
     `;
     const responsibles = await executeQuery(query, [eventId]);
@@ -92,12 +96,12 @@ class EventRepository {
   }
 
   // Asociar responsable a evento
-  async addResponsibleToEvent(eventId, usuarioId, rolResponsable) {
+  async addResponsibleToEvent(eventId, usuarioId, unidadAcademicaId, rolResponsable) {
     const query = `
-      INSERT INTO responsables_eventos (evento_id, usuario_id, rol_responsable)
-      VALUES (?, ?, ?)
+      INSERT INTO responsables_eventos (evento_id, usuario_id, unidad_academica_id, rol_responsable)
+      VALUES (?, ?, ?, ?)
     `;
-    await executeQuery(query, [eventId, usuarioId, rolResponsable]);
+    await executeQuery(query, [eventId, usuarioId, unidadAcademicaId, rolResponsable]);
   }
 
   // Eliminar todas las organizaciones de un evento
@@ -114,7 +118,7 @@ class EventRepository {
 
   // Buscar evento por ID con información básica
   async findBasicById(id) {
-    const query = 'SELECT id, estado, titulo, descripcion, fecha_inicio, fecha_fin, lugar_id, capacidad_esperada FROM eventos WHERE id = ?';
+    const query = 'SELECT id, estado, titulo, descripcion, fecha, hora_inicio, hora_fin, lugar_id, capacidad_esperada FROM eventos WHERE id = ?';
     const [event] = await executeQuery(query, [id]);
     return event;
   }
@@ -166,7 +170,7 @@ class EventRepository {
     await executeQuery(query, [estado, justificacion, id]);
   }
 
-  // Buscar eventos por estado (sin paginación)
+  // Buscar eventos por estado (sin paginación) - incluye información del creador
   async findByStatus(estado) {
     let baseQuery = `
       FROM eventos e
@@ -180,11 +184,16 @@ class EventRepository {
       params.push(estado);
     }
 
-    // Obtener registros
+    // Obtener registros con información del creador
     const dataQuery = `
       SELECT e.*, 
              l.nombre as lugar_nombre,
-             l.capacidad_max
+             l.capacidad_max,
+             (SELECT eo2.usuario_id 
+              FROM eventos_organizadores eo2 
+              WHERE eo2.evento_id = e.id 
+              ORDER BY eo2.id ASC 
+              LIMIT 1) as creador_id
       ${baseQuery}
       ORDER BY e.fecha_registro DESC
     `;
@@ -195,6 +204,119 @@ class EventRepository {
     return events;
   }
 
+  // Obtener organizadores de un evento
+  async getEventOrganizers(eventId) {
+    const query = `
+      SELECT eo.*, u.nombre, u.correo, u.rol_id, u.programa_id, u.facultad_id
+      FROM eventos_organizadores eo
+      INNER JOIN usuarios u ON eo.usuario_id = u.id
+      WHERE eo.evento_id = ?
+      ORDER BY eo.id ASC
+    `;
+    const organizers = await executeQuery(query, [eventId]);
+    return organizers;
+  }
+
+  // Obtener el creador del evento (el primer organizador agregado)
+  async getEventCreator(eventId) {
+    const query = `
+      SELECT eo.usuario_id, u.nombre, u.correo
+      FROM eventos_organizadores eo
+      INNER JOIN usuarios u ON eo.usuario_id = u.id
+      WHERE eo.evento_id = ?
+      ORDER BY eo.id ASC
+      LIMIT 1
+    `;
+    const [creator] = await executeQuery(query, [eventId]);
+    return creator;
+  }
+
+  // Agregar organizador a evento
+  async addOrganizerToEvent(eventId, usuarioId) {
+    // Verificar si ya existe la relación
+    const checkQuery = 'SELECT id FROM eventos_organizadores WHERE evento_id = ? AND usuario_id = ?';
+    const existing = await executeQuery(checkQuery, [eventId, usuarioId]);
+    if (existing.length > 0) {
+      return; // Ya existe, no hacer nada
+    }
+
+    const query = `
+      INSERT INTO eventos_organizadores (evento_id, usuario_id)
+      VALUES (?, ?)
+    `;
+    await executeQuery(query, [eventId, usuarioId]);
+  }
+
+  // Eliminar todos los organizadores de un evento
+  async removeAllOrganizersFromEvent(eventId) {
+    const query = 'DELETE FROM eventos_organizadores WHERE evento_id = ?';
+    await executeQuery(query, [eventId]);
+  }
+
+  // Obtener unidades académicas de un evento
+  async getEventAcademicUnits(eventId) {
+    const query = `
+      SELECT ue.*, ua.nombre, ua.director
+      FROM unidades_eventos ue
+      INNER JOIN unidades_academicas ua ON ue.unidad_academica_id = ua.id
+      WHERE ue.evento_id = ?
+    `;
+    const units = await executeQuery(query, [eventId]);
+    return units;
+  }
+
+  // Agregar unidad académica a evento
+  async addAcademicUnitToEvent(eventId, unidadAcademicaId) {
+    // Verificar si ya existe la relación
+    const checkQuery = 'SELECT id FROM unidades_eventos WHERE evento_id = ? AND unidad_academica_id = ?';
+    const existing = await executeQuery(checkQuery, [eventId, unidadAcademicaId]);
+    if (existing.length > 0) {
+      return; // Ya existe, no hacer nada
+    }
+
+    const query = `
+      INSERT INTO unidades_eventos (evento_id, unidad_academica_id)
+      VALUES (?, ?)
+    `;
+    await executeQuery(query, [eventId, unidadAcademicaId]);
+  }
+
+  // Eliminar todas las unidades académicas de un evento
+  async removeAllAcademicUnitsFromEvent(eventId) {
+    const query = 'DELETE FROM unidades_eventos WHERE evento_id = ?';
+    await executeQuery(query, [eventId]);
+  }
+
+  // Obtener avales de un evento
+  async getEventAvales(eventId) {
+    const query = `
+      SELECT a.*, 
+             pa.nombre as programa_nombre,
+             ua.nombre as unidad_academica_nombre
+      FROM avales_eventos a
+      LEFT JOIN programas_academicos pa ON a.programa_id = pa.id
+      LEFT JOIN unidades_academicas ua ON a.unidad_academica_id = ua.id
+      WHERE a.evento_id = ?
+    `;
+    const avales = await executeQuery(query, [eventId]);
+    return avales;
+  }
+
+  // Agregar aval a evento
+  async addAvalToEvent(eventId, programaId, unidadAcademicaId, archivoPdf) {
+    const query = `
+      INSERT INTO avales_eventos (evento_id, programa_id, unidad_academica_id, archivo_pdf)
+      VALUES (?, ?, ?, ?)
+    `;
+    await executeQuery(query, [eventId, programaId || null, unidadAcademicaId || null, archivoPdf]);
+  }
+
+  // Eliminar todos los avales de un evento
+  async removeAllAvalesFromEvent(eventId) {
+    const query = 'DELETE FROM avales_eventos WHERE evento_id = ?';
+    await executeQuery(query, [eventId]);
+  }
+
   // Buscar eventos por organizador con filtros (sin paginación)
   async findByOrganizer(organizadorId, filters = {}) {
     // Asegurar que organizadorId sea un número
@@ -202,8 +324,8 @@ class EventRepository {
     
     let baseQuery = `
       FROM eventos e
-      LEFT JOIN usuarios u ON e.organizador_id = u.id
-      WHERE e.organizador_id = ?
+      INNER JOIN eventos_organizadores eo ON e.id = eo.evento_id
+      WHERE eo.usuario_id = ?
     `;
     const params = [orgId];
 
@@ -219,22 +341,32 @@ class EventRepository {
       params.push(`%${filters.titulo}%`);
     }
 
-    // Filtro por fecha de inicio
-    if (filters.fecha_inicio) {
-      baseQuery += ' AND e.fecha_inicio >= ?';
-      params.push(filters.fecha_inicio);
+    // Filtro por fecha
+    if (filters.fecha) {
+      baseQuery += ' AND e.fecha = ?';
+      params.push(filters.fecha);
     }
 
-    // Filtro por fecha de fin
-    if (filters.fecha_fin) {
-      baseQuery += ' AND e.fecha_inicio <= ?';
-      params.push(filters.fecha_fin);
+    // Filtro por fecha desde
+    if (filters.fecha_desde) {
+      baseQuery += ' AND e.fecha >= ?';
+      params.push(filters.fecha_desde);
     }
 
-    // Obtener todos los eventos
+    // Filtro por fecha hasta
+    if (filters.fecha_hasta) {
+      baseQuery += ' AND e.fecha <= ?';
+      params.push(filters.fecha_hasta);
+    }
+
+    // Obtener todos los eventos con información del creador
     const dataQuery = `
-      SELECT e.*, 
-             u.nombre as organizador_nombre
+      SELECT DISTINCT e.*,
+             (SELECT eo2.usuario_id 
+              FROM eventos_organizadores eo2 
+              WHERE eo2.evento_id = e.id 
+              ORDER BY eo2.id ASC 
+              LIMIT 1) as creador_id
       ${baseQuery}
       ORDER BY e.fecha_registro DESC
     `;

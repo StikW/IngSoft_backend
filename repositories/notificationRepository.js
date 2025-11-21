@@ -28,14 +28,14 @@ class NotificationRepository {
       dataQuery = `
         SELECT id, titulo, mensaje, leida, fecha_envio
         FROM notificaciones 
-        WHERE usuario_id = ? AND leida = FALSE
+        WHERE usuario_id = ? AND (leida = FALSE OR leida = 0)
         ORDER BY fecha_envio DESC
       `;
       
       countQuery = `
         SELECT COUNT(*) as total
         FROM notificaciones 
-        WHERE usuario_id = ? AND leida = FALSE
+        WHERE usuario_id = ? AND (leida = FALSE OR leida = 0)
       `;
     } else {
       // Todas las notificaciones
@@ -83,7 +83,7 @@ class NotificationRepository {
     const query = `
       UPDATE notificaciones 
       SET leida = TRUE 
-      WHERE usuario_id = ? AND leida = FALSE
+      WHERE usuario_id = ? AND (leida = FALSE OR leida = 0)
     `;
     await executeQuery(query, [userId]);
   }
@@ -93,7 +93,7 @@ class NotificationRepository {
     const query = `
       SELECT COUNT(*) as count
       FROM notificaciones 
-      WHERE usuario_id = ? AND leida = FALSE
+      WHERE usuario_id = ? AND (leida = FALSE OR leida = 0)
     `;
     
     const result = await executeQuery(query, [userId]);

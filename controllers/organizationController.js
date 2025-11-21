@@ -1,4 +1,5 @@
 const organizationService = require('../services/organizationService');
+const organizationRepository = require('../repositories/organizationRepository');
 
 // HU2.1 - Registro de organización externa (INSERT)
 const createOrganization = async (req, res) => {
@@ -8,20 +9,35 @@ const createOrganization = async (req, res) => {
       nombre, 
       representante_legal,
       representante_asiste,
+      representante_alterno_nombre,
+      representante_alterno_contacto,
       telefono, 
       ubicacion, 
       sector_economico, 
       actividad_principal
     } = req.body;
 
+    // Debug: ver qué está recibiendo el backend
+    console.log('📋 Datos recibidos en createOrganization:', {
+      representante_asiste,
+      representante_alterno_nombre,
+      representante_alterno_contacto,
+      tipo_representante_asiste: typeof representante_asiste
+    });
+
     // Obtener la ruta completa del archivo PDF si se subió
     const certificado_pdf = req.file ? `/uploads/${req.file.filename}` : null;
+
+    // Parsear representante_asiste correctamente (puede venir como string "true"/"false" desde FormData)
+    const representanteAsisteParsed = representante_asiste === true || representante_asiste === 'true' || representante_asiste === 1 || representante_asiste === '1';
 
     const organizationData = {
       nit,
       nombre,
       representante_legal,
-      representante_asiste: representante_asiste === true || representante_asiste === 'true',
+      representante_asiste: representanteAsisteParsed,
+      representante_alterno_nombre: representante_alterno_nombre || null,
+      representante_alterno_contacto: representante_alterno_contacto || null,
       telefono,
       ubicacion,
       sector_economico,
@@ -101,11 +117,33 @@ const getOrganizationById = async (req, res) => {
 const updateOrganization = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verificar que la organización existe
+    const existingOrganization = await organizationRepository.findById(id);
+    
+    if (!existingOrganization) {
+      return res.status(404).json({
+        success: false,
+        message: 'Organización no encontrada'
+      });
+    }
+
+    // Verificar que el usuario es el creador de la organización
+    if (existingOrganization.creador_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para editar esta organización. Solo el creador puede editarla.'
+      });
+    }
+
     const { 
       nit,
       nombre, 
       representante_legal,
       representante_asiste,
+      representante_alterno_nombre,
+      representante_alterno_contacto,
       telefono, 
       ubicacion, 
       sector_economico, 
@@ -119,7 +157,11 @@ const updateOrganization = async (req, res) => {
     if (nit !== undefined) updateData.nit = nit;
     if (nombre !== undefined) updateData.nombre = nombre;
     if (representante_legal !== undefined) updateData.representante_legal = representante_legal;
-    if (representante_legal_asiste !== undefined) updateData.representante_legal_asiste = representante_legal_asiste === true || representante_legal_asiste === 'true';
+    if (representante_asiste !== undefined) {
+      updateData.representante_asiste = representante_asiste === true || representante_asiste === 'true' || representante_asiste === 1;
+    }
+    if (representante_alterno_nombre !== undefined) updateData.representante_alterno_nombre = representante_alterno_nombre;
+    if (representante_alterno_contacto !== undefined) updateData.representante_alterno_contacto = representante_alterno_contacto;
     if (telefono !== undefined) updateData.telefono = telefono;
     if (ubicacion !== undefined) updateData.ubicacion = ubicacion;
     if (sector_economico !== undefined) updateData.sector_economico = sector_economico;
@@ -173,6 +215,26 @@ const getAllOrganizations = async (req, res) => {
 const deleteOrganization = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verificar que la organización existe
+    const organizationRepository = require('../repositories/organizationRepository');
+    const existingOrganization = await organizationRepository.findById(id);
+    
+    if (!existingOrganization) {
+      return res.status(404).json({
+        success: false,
+        message: 'Organización no encontrada'
+      });
+    }
+
+    // Verificar que el usuario es el creador de la organización
+    if (existingOrganization.creador_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar esta organización. Solo el creador puede eliminarla.'
+      });
+    }
 
     // Eliminar la organización
     const result = await organizationService.deleteOrganization(id);
